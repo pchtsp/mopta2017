@@ -35,23 +35,28 @@ production <-""
 
 ```
 
-## R Markdown
+## Problema
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+### Red
+
+Se tiene un centro productivo y varios centros de consumo de producto.
+
 
 ```{r diagrams}
-DiagrammeR::mermaid(d_dist)
-DiagrammeR::mermaid(d_gantt)
+DiagrammeR::grViz("diagramas/nodos.gv")
 ```
 
-## Including Plots
+Esto hace pensar en un modelo de VRPTW, ya que hay que salir del nodo principal y dejar material en cada nodo.
 
-You can also embed plots, for example:
+### Producción
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+El centro productivo tiene distintas líneas de producción, cada una con una frecuencia de producción distinta, una cantidad de dósis y un nivel de radioactividad.
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Consmo
+
+Cada cliente tiene una hora determinada para consumir una dósis. Las dósis tienen que tener un mínimo y un máximo de radioactividad.
+
+### Producto
+
+Solo hay un producto. La calidad del producto se degrada cada media hora en una proporción.
