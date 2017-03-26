@@ -1,0 +1,8 @@
+0 Bethlehem, PA
+1 Reading, PA
+2 Princeton, NJ
+3 New York, NY
+4 Philadelphia, PA
+5 Trenton, NJ
+6 Scranton, PA
+7 Harrisburg, PA

@@ -1,0 +1,23 @@
+1. What's the planning horizon? => depends on the examination times (T_j)?
+2. Fixed costs: fixed to what horizon? => all the horizon of the problem?
+3. The i in production lines: are these the same line in different production plans? or different lines that work in parallel?
+    we assume i means "each element" of the set P.
+4. Is there any capacity for vechicles? We assume they are not constrained.
+5. At what time the production plants can start? any time? before demand starts? the day before?
+5. Does the RP degrade inside the factory and inside the vehicle?
+6. At what time can the production lines start working? can we assume we have a stock of very radioactive material at the beginning?
+
+11. Hsu, C. I., Hung, S. F., Li, H. C.: Vehicle routing problem with time-windows for perishable
+food delivery, Journal of Food Engineering, 80 (2), 465-475 (2007)
+
+16. Osvald A., Stirn L.: A vehicle routing algorithm for the distribution of fresh vegetables
+and similar perishable food. Journal of Food Engineering 85 (2), 285295, (2008)
+
+6. Doernera, K. F., Gronaltb, M., Hartl, R. F., Kiechlec, G., and Reimannd, M.: Exact and
+heuristic algorithms for the vehicle routing problem with multiple interdependent time win-
+dows, Computers and Operations Research, 35, 3034-3048 (2008)
+
+14. Luo, J. Y., Wang, J. Y., and Yu, H.: A Dynamic Vehicle Routing Problem for Medical
+Supplies in Large-scale Emergencies, In Proceedings of the 6th Joint International Informa-
+tion Technology and Artificial Intelligence Conference (ITAIC), Chongqing, China, August
+20-22, 2011
