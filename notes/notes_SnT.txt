@@ -1,0 +1,36 @@
+##Alternatives
+
+A. two steps: 
+
+1. (re)Assign appointments to routes.
+2. (re)Asign production to routes.
+3. Iterate.
+
+B. Make time discrete 
+    * (model everything at the same time?)
+    * P_(t, i) => number of doses produced in timeslot `t` and line `i`.
+    * 
+    
+C. Work with job production: index everything by the job where it was produced.
+    * vQTransport_(j, l, r) => job `j` from line `l` has X dosis in route `r`.
+        * constraints: start of route. 
+    * v01Demand_(j, l, p) => patient `p` is covered by a dosis from job `j` from line `l`.
+        * constraints: time, route.
+    * vStartJob_(j, l) (vFinishJob_(j, l)) => start (end) time for job `j` in production line `l`.
+        * constraints: line availability.
+    * vTimeVisit_(r, h) => time when route `r` passes through hospital `h`
+        * v01RouteHospital_(r, h) => if route `r` passes through hospital `h`.
+        * constaints: travel times, start of route.
+    * vStartRoute_(r) => time when route `r` starts from node.
+        * vehicle availability.
+
+##Solution
+
+1. Production:
+    * start time for each production.
+    * type of production.
+1. Transport: 
+    * route for each vehicle.
+    * dosis for each route.
+1. Demand satisfaction:
+    * production-transport-patient.
