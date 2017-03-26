@@ -98,8 +98,11 @@ def format_travel_times_distances(times, distances):
         dict_out_dist[(int(row[0]), int(row[1]))] = float(row[2])
 
     dict_out = {}
+    # I put both values in the same tuple.
+    # I also make the matrix symmetric
     for _tuple in dict_out_times.keys():
         dict_out[_tuple] = travel(dict_out_times[_tuple], dict_out_dist[_tuple])
+        dict_out[(_tuple[1], _tuple[0])] = travel(dict_out_times[_tuple], dict_out_dist[_tuple])
 
     return dict_out
 
