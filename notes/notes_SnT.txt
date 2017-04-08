@@ -1,3 +1,9 @@
+##Terminology
+
+* Job: indexed by correlative number and production line.
+* Route: indexed by correlative number and vehicle.
+* Patient: indexed by correlative number and center.
+
 ##Alternatives
 
 A. two steps: 
@@ -12,17 +18,22 @@ B. Make time discrete
     * 
     
 C. Work with job production: index everything by the job where it was produced.
-    * vQTransport_(j, l, r) => job `j` from line `l` has X dosis in route `r`.
-        * constraints: start of route. 
-    * v01Demand_(j, l, p) => patient `p` is covered by a dosis from job `j` from line `l`.
+    * vQTransport_(j, r) => job `j` has X number of doses in route `r`.
+        * constraints: start of route.
+    * v01Demand_(j, p) => patient `p` is covered by a doses from job `j`.
         * constraints: time, route.
-    * vStartJob_(j, l) (vFinishJob_(j, l)) => start (end) time for job `j` in production line `l`.
+    * v01TransportProductionDemand_(j, r, p) => patient `p` is covered by a dose produced in job `j` and transported in route `r`.
+        * **heuristic**: route_job_patient
+    * vStartJob_(j) (vFinishJob_(j)) => start (end) time for job `j`.
         * constraints: line availability.
+        * **heuristic**: job_start_times & job_end_times.
     * vTimeVisit_(r, h) => time when route `r` passes through hospital `h`
         * v01RouteHospital_(r, h) => if route `r` passes through hospital `h`.
         * constaints: travel times, start of route.
+        * **heuristic**: route_arivals.
     * vStartRoute_(r) => time when route `r` starts from node.
         * vehicle availability.
+        * **heuristic**: route_start_times_dict, route_end_times_dict
 
 ##Solution
 
@@ -34,3 +45,21 @@ C. Work with job production: index everything by the job where it was produced.
     * dosis for each route.
 1. Demand satisfaction:
     * production-transport-patient.
+
+##Dedication
+
+D 26/03:
+* 13:00 -> 23:00
+
+L 03/04:
+* 11:00 -> 14:00
+
+J 06/04:
+* 08:00 -> 10:00
+
+J 06/04:
+* 22:30 -> 23:15
+
+V 07/04:
+* 17:00 -> 19:30
+* 22:00 -> 23:00
