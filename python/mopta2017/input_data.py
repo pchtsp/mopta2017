@@ -6,12 +6,12 @@ from collections import namedtuple
 travel = namedtuple("Travel", ['times', 'dist'])
 line = namedtuple("Line", ['p', 'b', 'a'])
 
-
 def get_data_clean(data_directory):
 
     file_data = get_main_data(data_directory)
 
-    params = {x: file_data[x] for x in file_data.keys() if x not in ['J', 'L_ij', 'production_line_parameters', 'S_j', 'T_ij', 't']}
+    params = {x: file_data[x] for x in file_data.keys() if x not in
+              ['J', 'L_ij', 'production_line_parameters', 'S_j', 'T_ij', 't']}
 
     params['production'] = format_production_params(file_data['production_line_parameters'])
     params['demand'] = format_appointments_time(file_data['t'])
@@ -19,7 +19,9 @@ def get_data_clean(data_directory):
     params['clients'] = format_clients_data(file_data['J'])
 
     # we will add unloading times to the transport time depending on the destination:
+    # it doesn't make sense to have unloading times in the production node.
     unloading_times = format_waiting_params(file_data['S_j'])
+    unloading_times[0] = 0
     for (i, j) in params['travel']:
         new_time = params['travel'][(i, j)].times + unloading_times[j]
         params['travel'][(i, j)] = \
@@ -108,6 +110,10 @@ def format_travel_times_distances(times, distances):
 
 
 def format_appointments_time(times):
+    """
+    :param times: sequence of time of the day for each client.
+    :return: dictionary of minute on the day indexed by client and correlative number.
+    """
     dict_out = {}
     for i, row in enumerate(times):
         if i == 0:
