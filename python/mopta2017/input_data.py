@@ -6,17 +6,20 @@ from collections import namedtuple
 travel = namedtuple("Travel", ['times', 'dist'])
 line = namedtuple("Line", ['p', 'b', 'a'])
 
-def get_data_clean(data_directory):
 
+def get_data_clean(data_directory):
+    # data_directory = "../data/"
     file_data = get_main_data(data_directory)
 
-    params = {x: file_data[x] for x in file_data.keys() if x not in
-              ['J', 'L_ij', 'production_line_parameters', 'S_j', 'T_ij', 't']}
-
-    params['production'] = format_production_params(file_data['production_line_parameters'])
-    params['demand'] = format_appointments_time(file_data['t'])
-    params['travel'] = format_travel_times_distances(file_data['T_ij'], file_data['L_ij'])
-    params['clients'] = format_clients_data(file_data['J'])
+    params = {
+        'production': format_production_params(file_data['production_line_parameters']),
+        'demand': format_appointments_time(file_data['t']),
+        'travel': format_travel_times_distances(file_data['T_ij'], file_data['L_ij']),
+        'clients': format_clients_data(file_data['J']),
+        'costs': format_costs(file_data),
+        'sets': format_sets(file_data),
+        'radio': format_radio(file_data)
+    }
 
     # we will add unloading times to the transport time depending on the destination:
     # it doesn't make sense to have unloading times in the production node.
@@ -83,6 +86,12 @@ def format_waiting_params(data):
 
 
 def format_travel_times_distances(times, distances):
+    """
+    
+    :param times: time between each pair of nodes.
+    :param distances: distance between each pair of nodes.
+    :return: list of tuples (arcs). For each arc: the time (min) and the distance (m).
+    """
     dict_out_times = {}
     for i, row in enumerate(times):
         if i == 0:
@@ -137,6 +146,37 @@ def format_clients_data(data):
     for i, row in enumerate(data):
         dict_out[int(row[0])] = " ".join([row[1], row[2]])
     return dict_out
+
+
+def format_costs(data):
+
+    return {
+        'route': {
+            'kilometer': data['m_v'],
+            'hour': data['m_t']/60  # we work with minutes.
+        },
+        'production': {
+            'fixed': data['c_PF'],
+            'variable': data['cp']/60  # we work with minutes
+        }
+    }
+
+
+def format_sets(data):
+    return {
+        'vehicles': data['V'],
+        'lines': data['P'],
+        'clients': data['J'],
+
+    }
+
+
+def format_radio(data):
+    return {
+        'max': data['a_M_G'],
+        'min': data['a_m'],
+        'decay': data['c']
+    }
 
 if __name__ == "__main__":
     data_dir = "../data/"

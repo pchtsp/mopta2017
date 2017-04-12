@@ -1,11 +1,7 @@
-# from auxiliar import clean_dictionary
+from mopta2017.auxiliar import clean_dictionary
 
 # from collections import namedtuple
 # job_tuple = namedtuple("Job", ['start', 'type'])
-
-
-def clean_dictionary(mydict):
-    return {key: value for key, value in mydict.items() if value != 0}
 
 
 def initial_solution(data_in):
@@ -19,7 +15,7 @@ def initial_solution(data_in):
     # ##PRODUCTION######
     # ##################
     # each line has to have a maximum number of jobs in horizon
-    lines = range(1, int(data_in['P']+1))
+    lines = range(1, int(data_in['sets']['lines']+1))
 
     # TODO: change this to a better assumption
     # we're assuming that each job in the same line has the same "type".
@@ -56,7 +52,7 @@ def initial_solution(data_in):
     #  ##################
 
     # trivial solution: each vehicle to one center.
-    vehicles = range(int(data_in['V']))
+    vehicles = range(int(data_in['sets']['vehicles']))
     arcs = data_in['travel'].keys()
     times_prod_to_center = {center: data_in['travel'][node1, center].times for node1, center in arcs if node1 == 0}
     times_center_to_prod = {center: data_in['travel'][center, node1].times for node1, center in arcs if node1 == 0}
@@ -67,18 +63,18 @@ def initial_solution(data_in):
     route_start_times = \
         {(veh, route): route * duration_trip[veh] for veh in vehicles for route in range(max_trips[veh])}
     routes = route_start_times.keys()
-    route_end_times = \
-        {veh_route: route_start_times[veh_route] + duration_trip[veh_route[0]] for veh_route in routes}
+    # route_end_times = \
+    #     {veh_route: route_start_times[veh_route] + duration_trip[veh_route[0]] for veh_route in routes}
 
     # arrivals are times when each route passes through each node in its path. Since the first node has no
     # vehicle (or route) assigned, we need to assume the starting time of the route is the arrival to the node0
     route_arrivals = \
         {(veh_route[0], veh_route[1], vehicle_to_center[veh_route[0]]):
-        route_start_times[veh_route] + times_prod_to_center[vehicle_to_center[veh_route[0]]]
+             route_start_times[veh_route] + times_prod_to_center[vehicle_to_center[veh_route[0]]]
          for veh_route in routes}
     route_arrivals_node0 = \
         {(veh_route[0], veh_route[1], 0):
-        route_start_times[veh_route]for veh_route in routes}
+             route_start_times[veh_route]for veh_route in routes}
     route_arrivals.update(route_arrivals_node0)
 
     # Now that we have the routes, we can decided how much each route needs.
@@ -129,23 +125,23 @@ def initial_solution(data_in):
     # this means that I need to calculate the jobs that finished since the last trip
     # this is similar to the demand math but with
 
-    route_available = {route: 0 for route in route_needs}
-    routes_ordered = sorted(list(route_needs.keys()), key=lambda x: route_start_times[x])
+    # route_available = {route: 0 for route in route_needs}
+    # routes_ordered = sorted(list(route_needs.keys()), key=lambda x: route_start_times[x])
     jobs_ordered = sorted(list(job_start_times.keys()), key=lambda x: job_start_times[x])
     route_job_patient = {(route, job, patient): 0 for (route, patient) in route_patient for job in job_start_times}
 
     # in order to match production to routes to patients we need to:
     # 1. be sure the quality of the radioactive material is still good.
     # 2. be sure not to surpass the maximum production allowed.
-        # keep track of what is being produced and stored.
+    # keep track of what is being produced and stored.
     # 3. be sure to assign only production that ends before the route starts
     # 4. patient is not satisfied by any route.
 
     job_remain_production = {job: job_production[job] for job in job_start_times}
     route_patient_satisfied = {key: 0 for key in route_patient}
-    max_radio = data_in['a_M_G']
-    min_radio = data_in['a_m']
-    ratio_radio = data_in['c']
+    max_radio = data_in['radio']['max']
+    min_radio = data_in['radio']['min']
+    ratio_radio = data_in['radio']['decay']
 
     for job in jobs_ordered:
         for route, patient in route_patient:
@@ -166,6 +162,11 @@ def initial_solution(data_in):
             route_job_patient[route, job, patient] = 1
 
     route_job_patient = clean_dictionary(route_job_patient)
+
+    # I only need to register the jobs that actually serve a patient:
+    jobs_assigned = set([tup[2] for tup in route_job_patient])
+    job_start_times = {job: time for job, time in job_start_times.items() if job in jobs_assigned}
+    job_type = {job: j_type for job, j_type in job_type.items() if job in jobs_assigned}
     solution = {
         'jobs_start': job_start_times
         , 'jobs_type': job_type
@@ -173,71 +174,4 @@ def initial_solution(data_in):
         , 'routes_visit': route_arrivals
         , 'route_job_patient': route_job_patient
     }
-
-
-def patients_not_covered(solution, data_in):
-    # we check if patients are being covered
-    patients = data_in['demand'].keys()
-    patients_covered = [tup[2] for tup in solution['route_job_patient']]
-    patients_not_covered = [patient for patient in patients if patient not in patients_covered]
-
-    return patients_not_covered
-
-
-def patients_radioactive(solution, data_in):
-    # we check if patients receive the correct radioactive level
-    time_to_patient = {(job, patient): data_in['demand'][patient] - solution['jobs_start'][job]
-                       for (_, job, patient) in solution['route_job_patient']}
-
-    initial_radioactive_in_job = {job: data_in['production'][solution['jobs_type'][job]].a
-                                  for job in solution['jobs_start']}
-
-    radioactive_in_patient = \
-        {patient: initial_radioactive_in_job[job]*(data_in['c']**int(time_to_patient[job, patient]/30))
-         for (_, job, patient) in solution['route_job_patient']}
-
-    patients_bad_radioactive = {patient: radioactive_in_patient[patient] for (_, _, patient) in solution['route_job_patient']
-                                if not (data_in['a_m'] <= radioactive_in_patient[patient] <= data_in['a_M_G'])}
-    return patients_bad_radioactive
-
-
-def jobs_capacity(solution, data_in):
-
-    job_demand = {job: 0 for job in solution['jobs_start']}
-    for (_, job, _) in solution['route_job_patient']:
-        job_demand[job] += 1
-    # job_demand = clean_dictionary(job_demand)
-    job_idle_capacity = {job: data_in['production'][solution['jobs_type'][job]].b - job_demand[job]
-                         for job in job_demand}
-    return job_idle_capacity
-
-
-def calculate_cost(solution, data_in):
-    # TODO: calculate total cost is pending.
-    return
-
-
-def check_solution(solution, data_in):
-    """
-    :param solution: routes, jobs and job-route-patient assignment.
-    :param data_in: the initial data set
-    :return: returns 1 if it's feasible, 0 if not
-    Also, it prints the infeasible things it finds.
-    """
-    solution_ok = 1
-    not_covered = patients_not_covered(solution, data_in)
-    num_patients_not_covered = len(not_covered)
-
-    if num_patients_not_covered > 0:
-        print('There are {} patients without treatment'.format(num_patients_not_covered))
-        solution_ok = 0
-
-    patients_bad_radioactive = patients_radioactive(solution, data_in)
-    num_patients_bad_radioactive = len(patients_bad_radioactive)
-    if num_patients_bad_radioactive > 0:
-        print('There are {} patients with bad radioactive component'.format(num_patients_bad_radioactive))
-        solution_ok = 0
-
-    return solution_ok
-
-
+    return solution
