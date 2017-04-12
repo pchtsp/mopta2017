@@ -18,23 +18,52 @@ B. Make time discrete
     * 
     
 C. Work with job production: index everything by the job where it was produced.
+    
+    Demand:
+    * route_job_patient_(j, r, p) => patient `p` is covered by a dose produced in job `j` and transported in route `r`.
+        * constraints: radioactivity, times, availability, ...
+    
+    Transport:
+    * route_start_times_(r) => time when route `r` starts from production node.
+        * vehicle availability.
+    * route_arcs(r, c1, c2) => route `r` passes through `c1` before going to `c2`.
+        * constraints: travel times + distances.
+    * route_arivals_(r, h) => time when route `r` passes through hospital `h`
+        * v01RouteHospital_(r, h) => if route `r` passes through hospital `h`.
+        * constaints: travel times, start of route.        
+        
+    Production:
+    * job_start_times_(j) => start (end) time for job `j`.
+        * constraints: line availability.
+    * job_type_(j) => assignment of job to a production line.
+        * constraints: job_start, job_end, production, radioactivity, job_used, costs, etc.
+    * line_used_(l) => if a job is used in a production line, then the production is used
+    * job_used_(j) => if a job is used, it uses its line and costs time and has a type.
+    
+    Auxiliar:
     * vQTransport_(j, r) => job `j` has X number of doses in route `r`.
         * constraints: start of route.
     * v01Demand_(j, p) => patient `p` is covered by a doses from job `j`.
         * constraints: time, route.
-    * v01TransportProductionDemand_(j, r, p) => patient `p` is covered by a dose produced in job `j` and transported in route `r`.
-        * **heuristic**: route_job_patient
-    * vStartJob_(j) (vFinishJob_(j)) => start (end) time for job `j`.
-        * constraints: line availability.
-        * **heuristic**: job_start_times & job_end_times.
-    * vTimeVisit_(r, h) => time when route `r` passes through hospital `h`
-        * v01RouteHospital_(r, h) => if route `r` passes through hospital `h`.
-        * constaints: travel times, start of route.
-        * **heuristic**: route_arivals.
-    * vStartRoute_(r) => time when route `r` starts from node.
-        * vehicle availability.
-        * **heuristic**: route_start_times_dict, route_end_times_dict
 
+##Magnitudes
+
+**Heuristic solution**
+
+* routes: 46
+* jobs: 108
+
+**Data**
+
+* patients: 315
+* possible pairs of centers: 25
+
+Potential size for:
+
+* v01TransportProductionDemand_: 46 * 108 * 315 = 1 564 920 vars.
+* v01RouteSequence: 1150 vars.
+* 
+        
 ##Solution
 
 1. Production:
@@ -45,21 +74,3 @@ C. Work with job production: index everything by the job where it was produced.
     * dosis for each route.
 1. Demand satisfaction:
     * production-transport-patient.
-
-##Dedication
-
-D 26/03:
-* 13:00 -> 23:00
-
-L 03/04:
-* 11:00 -> 14:00
-
-J 06/04:
-* 08:00 -> 10:00
-
-J 06/04:
-* 22:30 -> 23:15
-
-V 07/04:
-* 17:00 -> 19:30
-* 22:00 -> 23:00
