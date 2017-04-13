@@ -1,3 +1,5 @@
+from math import ceil
+
 
 def clean_dictionary(dictionary, default_value=0):
     return {key: value for key, value in dictionary.items() if value != default_value}
@@ -26,3 +28,13 @@ def get_travel_arcs(routes_visit):
         route_arc[route].append((client_prev, clients[0]))
 
     return route_arc
+
+
+def get_radioactivity(initial_radio, time, decay):
+    """
+    :param initial_radio: initial radioactivity 
+    :param time: time in minutes
+    :param decay: % of decay every 30 minutes
+    :return: radioactivity after time passes
+    """
+    return (decay**int(ceil(time/30))) * initial_radio

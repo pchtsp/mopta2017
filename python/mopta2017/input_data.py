@@ -4,7 +4,7 @@ from collections import namedtuple
 
 
 travel = namedtuple("Travel", ['times', 'dist'])
-line = namedtuple("Line", ['p', 'b', 'a'])
+line = namedtuple("Line", ['time', 'dosages', 'radio'])
 
 
 def get_data_clean(data_directory):
@@ -67,6 +67,7 @@ def get_main_data(data_directory):
 
 def format_production_params(production_params):
     dict_out = {}
+    production_params.pop(0) #  the first line is the header
     for i, row in enumerate(production_params):
         col1 = re.search('^\d+', (row[0]))
         if col1 is not None:
@@ -124,19 +125,17 @@ def format_appointments_time(times):
     :return: dictionary of minute on the day indexed by client and correlative number.
     """
     dict_out = {}
+    times.pop(0)  # first line is header
     for i, row in enumerate(times):
-        if i == 0:
-            continue
+        center = row.pop(0)  # first number is the client
         for j, row2 in enumerate(row):
-            if j == 0:
-                continue
             hour = re.search('^\d+:?', row2).group()[:-1]
             minute = re.search(':?\d+$', row2).group()[1:]
             if row2 == '':
                 time = 0
             else:
                 time = float(hour)*60 + float(minute)
-            dict_out[(int(row[0]), j)] = time
+            dict_out[(int(center), j)] = time
 
     return dict_out
 
@@ -153,7 +152,7 @@ def format_costs(data):
     return {
         'route': {
             'kilometer': data['m_v'],
-            'hour': data['m_t']/60  # we work with minutes.
+            'minute': data['m_t']/60  # we work with minutes.
         },
         'production': {
             'fixed': data['c_PF'],
@@ -164,10 +163,8 @@ def format_costs(data):
 
 def format_sets(data):
     return {
-        'vehicles': data['V'],
-        'lines': data['P'],
-        'clients': data['J'],
-
+        'vehicles': int(data['V']),
+        'lines': int(data['P'])
     }
 
 
