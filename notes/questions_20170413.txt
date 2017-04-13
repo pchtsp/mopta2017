@@ -1,0 +1,13 @@
+**Production lines**
+
+* so there's four lines and four types of jobs. But any line can do any type of job. So production line 1 can do job type 2. When we say job type we mean a combination of p_i, a_i and b_i. Is this correct? One line can have jobs from all types and change from one job to the other without cost?
+
+**Data** 
+
+* Is there any other data set we can use? Is the solution going to be tested with another data set?
+* Is there an example of solution? So we know the format of the output?
+
+**Transport**
+
+* Should we assume that all vehicles have to return to the production node at the beginning?
+* Can two vehicles unload at the same time in a hospital? Can they leave at the same time from the production node?
