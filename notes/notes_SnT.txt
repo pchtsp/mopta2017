@@ -81,6 +81,10 @@ Assumptions:
     * to break simmetry, we want to restrict some of the lines to some of the line types.
     * again, we will allow overlapping.
     * also, if a line has the "slowest" batches pre-assigned, we reduce the number of potential jobs.
+
+* group patients into groups of patients??
+* pre-assign job types to jobs in a random / intelligent way.
+* pre-assign centers to routes not vehicles.
     
 ##Solution
 
