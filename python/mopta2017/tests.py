@@ -54,6 +54,9 @@ def get_costs(solution, data_in):
     travel_dist_cost = sum(data_in['travel'][arc].dist * costs['route']['kilometer']
                            for route in route_arcs for arc in route_arcs[route])
 
+    vehicle_used = set(_tup[0][0] for _tup in solution['route_job_patient'])
+    vehicle_cost = len(vehicle_used) * costs['route']['fixed']
+
     lines_used = set([tup[0] for tup in solution['jobs_start']])
     lines_time_used = sum(data_in['production'][solution['jobs_type'][tup]].time for tup in solution['jobs_type'])
 
@@ -63,6 +66,7 @@ def get_costs(solution, data_in):
     return {
         'travel_time': travel_time_cost,
         'travel_dist': travel_dist_cost,
+        'travel_fix': vehicle_cost,
         'prod_fix': production_fix_cost,
         'prod_var': production_var_cost
     }

@@ -1,4 +1,4 @@
-from math import ceil
+import math
 
 
 def clean_dictionary(dictionary, default_value=0):
@@ -37,4 +37,36 @@ def get_radioactivity(initial_radio, time, decay):
     :param decay: % of decay every 30 minutes
     :return: radioactivity after time passes
     """
-    return (decay**int(ceil(time/30))) * initial_radio
+    return (decay**int(math.ceil(time/30))) * initial_radio
+
+
+def get_time_from_radio(initial_radio, end_radio, decay):
+    """
+    :param initial_radio: initial radioactivity 
+    :param end_radio: radio level at the end 
+    :param decay: % of decay every 30 minutes
+    :return: time in minutes to reach that level or end_radio
+    """
+    return round(math.log(end_radio / initial_radio, decay) * 30)
+
+
+def limit_start_jtype_patient(data_in, min_start=False):
+    job_types = list(data_in['production'].keys())
+    patients = list(data_in['demand'].keys())
+
+    string_q = "min"
+    if not min_start: string_q = "max"
+
+    jtype_time = {j_type: get_time_from_radio(
+        data_in['production'][j_type].radio,
+        data_in['radio'][string_q],
+        data_in['radio']['decay']) for j_type in job_types}
+
+    start_jtype_patient = {(j_type, patient):
+                                data_in['demand'][patient] -
+                                (jtype_time[j_type] +
+                                 data_in['production'][j_type].time)
+                                 for j_type in job_types for patient in patients
+                                 }
+    start_jtype_patient = {key: value for key, value in start_jtype_patient.items() if value>0}
+    return start_jtype_patient

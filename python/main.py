@@ -1,6 +1,7 @@
 import mopta2017.input_data as data_import
 import mopta2017.heuristics as heuristics
 import mopta2017.tests as tests
+import mopta2017.auxiliar as aux
 
 data_dir = "../data/20170326/"
 data_in = data_import.get_data_clean(data_dir)
@@ -13,6 +14,8 @@ uncovered = tests.patients_not_covered(solution, data_in)
 tests.get_job_capacity(solution, data_in, True)
 
 job_characteristics = {job: data_in['production'][job_type] for job, job_type in solution['jobs_type'].items()}
+
+aux.limit_start_jtype_patient(data_in)
 
 {job: data_in['production'][job_type] for job, job_type in solution['jobs_type'].items()}
 

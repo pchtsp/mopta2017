@@ -152,7 +152,8 @@ def format_costs(data):
     return {
         'route': {
             'kilometer': data['m_v'],
-            'minute': data['m_t']/60  # we work with minutes.
+            'minute': data['m_t']/60,  # we work with minutes.
+            'fixed': data['M_F']
         },
         'production': {
             'fixed': data['c_PF'],
