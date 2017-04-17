@@ -47,7 +47,7 @@ Auxiliar:
 * v01Demand_(j, p) => patient `p` is covered by a doses from job `j`.
     * constraints: time, route.
 
-##Magnitudes
+##Data and magnitudes
 
 **Heuristic solution**
 
@@ -55,8 +55,6 @@ Auxiliar:
 * jobs: 7
 
 It's reasonable to think on potentially 5-10 jobs per line.
-
-**Data**
 
 * patients: 315
 * possible pairs of centers: 25
@@ -66,7 +64,7 @@ Potential size for:
 * route_job_patient: 46 * 7 * 315 = 101 430 vars.
 * route_arcs: 1150 vars.
 
-Assumptions:
+##Assumptions:
 
 * routes-hospital clustering: 
     * not every route can visit any hospital.
@@ -85,6 +83,7 @@ Assumptions:
 * group patients into groups of patients??
 * pre-assign job types to jobs in a random / intelligent way.
 * pre-assign centers to routes not vehicles.
+* get better max_time for jobs, routes, etc.
     
 ##Solution
 
