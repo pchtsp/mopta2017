@@ -45,6 +45,35 @@ def get_job_capacity(solution, data_in, all_jobs=False):
     return job_idle_capacity
 
 
+def get_overlapping_jobs_in_line(solution, data_in):
+    jobs_start = solution['jobs_start']
+    jobs = [job for job in solution['jobs_start']]
+    jobs_end = {job: jobs_start[job] + data_in['production'][solution['jobs_type'][job]].time
+                for job in jobs}
+    lines = list(set([job[0] for job in jobs]))
+    jobs_per_line = {line: [job for job in jobs if job[0] == line] for line in lines}
+
+    cliques = [(job1, job2) for line in lines for job1 in jobs_per_line[line]
+                        for job2 in jobs_per_line[line] if job1[1] != job2[1]
+                        ]
+
+    overlapping_jobs = [(job1, job2) for (job1, job2) in cliques
+                        if jobs_start[job2] >= jobs_start[job1] >=  jobs_end[job2]]
+
+    return overlapping_jobs
+
+
+def get_routes_before_job(solution, data_in):
+    route_job = [(tup[0], tup[1]) for tup in solution['route_job_patient']]
+    jobs_start = solution['jobs_start']
+    jobs = [job for job in solution['jobs_start']]
+    jobs_end = {job: jobs_start[job] + data_in['production'][solution['jobs_type'][job]].time
+                for job in jobs}
+
+    route_before_job = [(r, j) for (r, j) in route_job if solution['routes_start'][r] < jobs_end[j]]
+    return route_before_job
+
+
 def get_costs(solution, data_in):
     costs = data_in['costs']
     route_arcs = get_travel_arcs(solution['routes_visit'])
@@ -97,6 +126,12 @@ def check_solution(solution, data_in):
     num_jobs_over_capacity = len(idle_capacity)
     if num_jobs_over_capacity > 0:
         print('There are {} jobs with over capacity'.format(num_jobs_over_capacity))
+        solution_ok = 0
+
+    overlapping = get_overlapping_jobs_in_line(solution, data_in)
+    num_jobs_overlapping = len(overlapping)
+    if num_jobs_overlapping > 0:
+        print("There are {} jobs overlapping in the same line".format(num_jobs_overlapping))
         solution_ok = 0
 
     return solution_ok

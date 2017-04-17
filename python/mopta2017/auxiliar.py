@@ -6,11 +6,11 @@ def clean_dictionary(dictionary, default_value=0):
 
 
 def get_travel_arcs(routes_visit):
-    total_clients = list(set([_tuple[2] for _tuple in routes_visit]))
+    total_clients = list(set([_tuple[1] for _tuple in routes_visit]))
 
-    routes_client_visit = {(veh, route): {client: -1 for client in total_clients} for (veh, route, _) in routes_visit}
-    for (veh, route, client), values in routes_visit.items():
-        routes_client_visit[(veh, route)][client] = values
+    routes_client_visit = {veh_route: {client: -1 for client in total_clients} for (veh_route, _) in routes_visit}
+    for (veh_route, client), values in routes_visit.items():
+        routes_client_visit[veh_route][client] = values
 
     for route in routes_client_visit:
         routes_client_visit[route] = clean_dictionary(routes_client_visit[route], -1)

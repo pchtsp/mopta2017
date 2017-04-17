@@ -67,12 +67,11 @@ def initial_solution(data_in):
     # arrivals are times when each route passes through each node in its path. Since the first node has no
     # vehicle (or route) assigned, we need to assume the starting time of the route is the arrival to the node0
     route_arrival = \
-        {(veh_route[0], veh_route[1], vehicle_to_center[veh_route[0]]):
+        {(veh_route, vehicle_to_center[veh_route[0]]):
              route_start_time[veh_route] + times_prod_to_center[vehicle_to_center[veh_route[0]]]
          for veh_route in routes}
     route_arrivals_node0 = \
-        {(veh_route[0], veh_route[1], 0):
-             route_start_time[veh_route]for veh_route in routes}
+        {(veh_route, 0): route_start_time[veh_route] for veh_route in routes}
     route_arrival.update(route_arrivals_node0)
 
     # Now that we have the routes, we can decide how much each route needs.
@@ -87,8 +86,8 @@ def initial_solution(data_in):
     veh_routes_per_center = {}
     for center in centers:
         veh_routes_per_center[center] = [(veh, route) for (veh, route) in routes
-                                         if (veh, route, center) in route_arrival]
-        veh_routes_per_center[center].sort(key=lambda x: route_arrival[x[0], x[1], center])
+                                         if ((veh, route), center) in route_arrival]
+        veh_routes_per_center[center].sort(key=lambda x: route_arrival[x, center])
 
     #  ##################
     #  ##TRANSPORT/DEMAND
@@ -102,7 +101,7 @@ def initial_solution(data_in):
         if len(veh_routes_per_center[center]) == 0:
             continue
         for route in veh_routes_per_center[center]:
-            arrive_time = route_arrival[route[0], route[1], center]
+            arrive_time = route_arrival[route, center]
             for pos in range(center_num_clients[center]):
                 if arrive_time <= center_demand[(center, pos)]:
                     route_patient[(route, (center, pos))] = 1

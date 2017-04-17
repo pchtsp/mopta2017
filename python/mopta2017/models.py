@@ -4,7 +4,7 @@ import numpy as np
 import sklearn.cluster as cluster
 
 
-def mip_model_complete(data_in, max_seconds):
+def mip_model_complete(data_in, max_seconds=5000):
     # problem is with routes and jobs, apparently. 21. (27 with one more veh). 32 with one more job
 
     # We define the main sets:
@@ -18,7 +18,7 @@ def mip_model_complete(data_in, max_seconds):
     centers = [0, 1, 2]
     patients = [p for p in patients if p[0] in centers]
     vehicles = [0, 1]
-    lines = [0]
+    lines = [0, 1, 2]
     # job_types = [0, 1, 2]
     # #### TEMPORAL:
     num_jobs_slowest_line = 3
@@ -39,7 +39,8 @@ def mip_model_complete(data_in, max_seconds):
     # assumption: first job takes the fastest job types and the most number of jobs:
     num_jobs_line = {line: num_jobs[line] for line in lines}
     jobs = [(line, job_num) for line in lines for job_num in range(num_jobs_line[line])]
-    av_job_type = [(job, j_type) for job in jobs for j_type in job_types if j_type-1 <= job[0] <= j_type]
+    # av_job_type = [(job, j_type) for job in jobs for j_type in job_types if j_type-1 <= job[0] <= j_type]
+    av_job_type = [(job, j_type) for job in jobs for j_type in job_types]
     jobnum_per_line = {line: sorted(job[1] for job in jobs if job[0] == line) for line in lines}
 
     # Route creation:
@@ -227,7 +228,6 @@ def mip_model_complete(data_in, max_seconds):
     # Demand
 
     # TODO: see if this can be improved... or if it even makes sense...
-    # TODO: do equivalent but with max_start. This one is more complicated.
     # the time since the production of job until the patient uses it cannot exceed a maximum
     # that depends on the type of job.
     for job, patient in av_job_patient:
@@ -238,12 +238,30 @@ def mip_model_complete(data_in, max_seconds):
                  (j_type, patient) in min_start_jtype_patient]
             ) - (1 - job_patient[job, patient]) * ub['time']
 
+        model += \
+            job_start_time[job] <= pulp.lpSum(
+                [max_start_jtype_patient[j_type, patient] * job_type[job, j_type]
+                 for j_type in job_types if (job, j_type) in av_job_type if
+                 (j_type, patient) in max_start_jtype_patient]
+            ) + (1 - job_patient[job, patient]) * ub['time']
+
+    # TODO: this is an absurdly complicated constraint.
+    # if a combo (j_type, patient) is not possible: the job cannot have both assigned.
+    for j_type in job_types:
+        for patient in patients:
+            if (j_type, patient) not in max_start_jtype_patient:
+                for job in jobs:
+                    if ((job, patient) in av_job_patient and
+                                (job, j_type) in av_job_type):
+                        model += job_type[job, j_type] + job_patient[job, patient] <= 1,\
+                        "forbiden_job_jtype_patient_{}_{}_{}".format(job, j_type, patient)
+
     # TODO not sure if the two first ones are redundant
     # only a job for each patient:
     # only a route for each patient:
     for patient in patients:
-        # model += pulp.lpSum(job_patient[job, patient] for job in jobs if av_job_patient) == 1
-        # model += pulp.lpSum(route_patient[route, patient] for route in routes if av_route_patient) == 1
+        model += pulp.lpSum(job_patient[job, patient] for job in jobs if av_job_patient) == 1
+        model += pulp.lpSum(route_patient[route, patient] for route in routes if av_route_patient) == 1
         model += pulp.lpSum(route_job_patient[r, j, patient]
                             for (r, j) in av_route_job_patient_dic[patient]) == 1
 
@@ -299,7 +317,7 @@ def mip_model_complete(data_in, max_seconds):
     # SOLVING
 
     # model.solve(GLPK_CMD())
-    max_seconds = 2000
+    # max_seconds = 4000
     model.solve(pulp.PULP_CBC_CMD(maxSeconds=max_seconds, msg=1, fracGap=0))
 
     # FORMAT SOLUTION
