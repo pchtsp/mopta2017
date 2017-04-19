@@ -1,11 +1,10 @@
 import pulp
-from mopta2017.auxiliar import get_time_from_radio, limit_start_jtype_patient
+from mopta2017.auxiliar import limit_start_jtype_patient
 import numpy as np
 import sklearn.cluster as cluster
-
+import math
 
 def mip_model_complete(data_in, max_seconds=5000):
-    # problem is with routes and jobs, apparently. 21. (27 with one more veh). 32 with one more job
 
     # We define the main sets:
     patients = list(data_in['demand'].keys())
@@ -15,15 +14,14 @@ def mip_model_complete(data_in, max_seconds=5000):
     vehicles = list(range(data_in['sets']['vehicles']))
     prod_node = 0
     # #### TEMPORAL:
-    centers = [0, 1, 2]
+    centers = list(range(8))
     patients = [p for p in patients if p[0] in centers]
-    vehicles = [0, 1]
-    lines = [0, 1, 2]
-    # job_types = [0, 1, 2]
-    # #### TEMPORAL:
+    vehicles = list(range(5))
+    lines = list(range(4))
+    num_routes_per_veh = 2
     num_jobs_slowest_line = 3
     step = 2
-    num_routes_per_veh = 3
+    # #### TEMPORAL:
     # maximum parameters:
     ub = {
         'time': 24*60,  # one day
@@ -39,14 +37,14 @@ def mip_model_complete(data_in, max_seconds=5000):
     # assumption: first job takes the fastest job types and the most number of jobs:
     num_jobs_line = {line: num_jobs[line] for line in lines}
     jobs = [(line, job_num) for line in lines for job_num in range(num_jobs_line[line])]
-    # av_job_type = [(job, j_type) for job in jobs for j_type in job_types if j_type-1 <= job[0] <= j_type]
-    av_job_type = [(job, j_type) for job in jobs for j_type in job_types]
+    av_job_type = [(job, j_type) for job in jobs for j_type in job_types if j_type-1 <= job[0] <= j_type]
+    # av_job_type = [(job, j_type) for job in jobs for j_type in job_types]
     jobnum_per_line = {line: sorted(job[1] for job in jobs if job[0] == line) for line in lines}
 
     # Route creation:
     # we're assuming # routes per vehicle.
     routes = [(veh, route_num) for veh in vehicles for route_num in range(num_routes_per_veh)]
-    routenum_per_veh = {veh: sorted(route[1] for route in routes if route[0]==veh) for veh in vehicles}
+    routenum_per_veh = {veh: sorted(route[1] for route in routes if route[0] == veh) for veh in vehicles}
 
     # TODO: I need to decide a better approach at clustering patients into routes.
     arc_dist = {arc: travel.dist for arc, travel in data_in['travel'].items()}
@@ -55,18 +53,23 @@ def mip_model_complete(data_in, max_seconds=5000):
     arc_dist_array = np.array([[arc_dist[center, center2]
                                 for center2 in centers if center2 != prod_node]
                                for center in centers if center != prod_node])
-    half_vehicles = int(len(vehicles)/2)
-    clusters = cluster.KMeans(n_clusters=half_vehicles).fit(arc_dist_array).labels_
-    center_cluster = {center: clusters[center-1] for center in centers[1:]}
+    # half_vehicles = int(len(vehicles)/2)
+    half_centers = math.ceil((len(centers) - 1)/2)
+    n_clusters = min(len(vehicles), int(half_centers))
+    center_clusters_list = cluster.KMeans(n_clusters=n_clusters).fit(arc_dist_array).labels_
+    clusters = list(set(center_clusters_list))
+    center_cluster = {center: center_clusters_list[center-1] for center in centers[1:]}
+    center_per_cluster = {clust: [center for center in centers[1:] if center_cluster[center] == clust]
+                          for clust in clusters}
     # I will assign two clusters to each vehicle and 1 cluster to each route.
-    av_veh_center = {veh: [center for center in centers[1:]
-                           if (int(veh/2) <= center_cluster[center] <= int(veh/2)+1)
-                           or (int(veh/2)+1 == half_vehicles and center_cluster[center] == 0)
-                           ] + [prod_node]
-                     for veh in vehicles}
+    cluster_per_veh = {veh: [c for c in clusters
+                             if (int(veh) <= c <= int(veh)+1)
+                             or (int(veh)+1 == len(vehicles) and c == 0)] for veh in vehicles}
     # I will assign pair routes to the first of the clusters of the vehicle
     # The other goes to odd routes
-    av_route_center = [(r, c) for r in routes for c in av_veh_center[r[0]]]
+    av_route_center = [(r, c) for r in routes for clust_pos in range(len(cluster_per_veh[r[0]]))
+                       for c in center_per_cluster[cluster_per_veh[r[0]][clust_pos]] if clust_pos % 2 == r[1] % 2] +\
+        [(r, prod_node) for r in routes]
     av_route_centers = [(r, c1, c2) for r in routes for c1 in centers for c2 in centers
                         if (r, c1) in av_route_center if (r, c2) in av_route_center
                         if (c1 != c2 or c1 == prod_node)]
@@ -154,7 +157,7 @@ def mip_model_complete(data_in, max_seconds=5000):
     for line in lines:
         for job_num in jobnum_per_line[line][1:]:
             model += job_start_time[line, job_num] >= job_start_time[line, job_num-1] + job_time[line, job_num-1],\
-            "sequence_jobs_in_line_{}_{}".format(line, job_num)
+                     "sequence_jobs_in_line_{}_{}".format(line, job_num)
             model += job_used[line, job_num-1] >= job_used[line, job_num]
 
     # if a job is used, its line is used
@@ -166,7 +169,7 @@ def mip_model_complete(data_in, max_seconds=5000):
     for job in jobs:
         model += pulp.lpSum(job_type[job, j_type]
                             for j_type in job_types if (job, j_type) in av_job_type) == job_used[job],\
-        "job_used_assign_type_{}".format(job)
+                 "job_used_assign_type_{}".format(job)
 
         # if a job is used (this is enforced by the type constraint already).
         # it has a production equal to its type
@@ -174,18 +177,15 @@ def mip_model_complete(data_in, max_seconds=5000):
         # it has times equal to its type
     for job in jobs:
         model += job_production[job] == pulp.lpSum(job_type[job, j_type] * production[j_type].dosages
-                                                   for j_type in job_types if (job, j_type) in av_job_type), \
+                                                   for j_type in job_types if (job, j_type) in av_job_type),\
                  "job_production_{}".format(job)
         # model += job_radio[job] <= job_used[job] * pulp.lpSum(job_type[job, j_type] * production[j_type].radio
         #                                                       for j_type in job_types)
         model += job_time[job] >= pulp.lpSum(job_type[job, j_type] * production[j_type].time
-                                             for j_type in job_types if (job, j_type) in av_job_type), \
+                                             for j_type in job_types if (job, j_type) in av_job_type),\
                  "job_time_{}".format(job)
 
     # Transport
-    # TODO if a route is not used, it should not cost
-    # Maybe forcing that if a route is not used, it starts and ends in the prod_node
-    # Maybe it will do so automatically??
 
     # route_end_time needs to be bigger the last arrival plus time to get to prod_node
     # TODO: I think this is not quite what I want... it could work though.
@@ -201,10 +201,10 @@ def mip_model_complete(data_in, max_seconds=5000):
         for route_num in routenum_per_veh[veh][1:]:
             model += route_start_time[veh, route_num] >= route_end_time[veh, route_num-1]
 
-    # if a route is not used: the next route is also not used (breaks symmetry)
-    for veh in vehicles:
-        for route_num in routenum_per_veh[veh][1:]:
-            model += route_used[veh, route_num-1] >= route_used[veh, route_num]
+    # # if a route is not used: the next route is also not used (breaks symmetry)
+    # for veh in vehicles:
+    #     for route_num in routenum_per_veh[veh][1:]:
+    #         model += route_used[veh, route_num-1] >= route_used[veh, route_num]
 
     # arrival time for production node is route_start_time
     for route in routes:
@@ -214,7 +214,7 @@ def mip_model_complete(data_in, max_seconds=5000):
     for r, c1, c2 in av_route_centers:
         if c2 == prod_node:
             continue
-        model += route_arrival[r, c2] >= arc_time[c1, c2] + route_arrival[r, c1] - \
+        model += route_arrival[r, c2] >= arc_time[c1, c2] + route_arrival[r, c1] -\
                                          ub['time'] * (1 - route_arc[r, c1, c2])
 
     # max edges in and out = 1 for each route
@@ -227,7 +227,7 @@ def mip_model_complete(data_in, max_seconds=5000):
 
     # Demand
 
-    # TODO: see if this can be improved... or if it even makes sense...
+    # TODO: see if this can be improved...
     # the time since the production of job until the patient uses it cannot exceed a maximum
     # that depends on the type of job.
     for job, patient in av_job_patient:
@@ -256,12 +256,13 @@ def mip_model_complete(data_in, max_seconds=5000):
                         model += job_type[job, j_type] + job_patient[job, patient] <= 1,\
                         "forbiden_job_jtype_patient_{}_{}_{}".format(job, j_type, patient)
 
-    # TODO not sure if the two first ones are redundant
     # only a job for each patient:
     # only a route for each patient:
     for patient in patients:
-        model += pulp.lpSum(job_patient[job, patient] for job in jobs if av_job_patient) == 1
-        model += pulp.lpSum(route_patient[route, patient] for route in routes if av_route_patient) == 1
+        model += pulp.lpSum(job_patient[job, patient]
+                            for job in av_job_patient_dic[patient]) == 1
+        model += pulp.lpSum(route_patient[route, patient]
+                            for route in av_route_patient_dic[patient]) == 1
         model += pulp.lpSum(route_job_patient[r, j, patient]
                             for (r, j) in av_route_job_patient_dic[patient]) == 1
 
@@ -274,7 +275,7 @@ def mip_model_complete(data_in, max_seconds=5000):
     # route needs to arrive to center before patient needs dosage
     for (route, patient) in av_route_patient:
         model += \
-            route_arrival[route, patient[0]] <= data_in['demand'][patient] + \
+            route_arrival[route, patient[0]] <= data_in['demand'][patient] +\
                                                 (1 - route_patient[route, patient]) * ub['time']
 
     # if route is not used, it cannot take passengers
@@ -284,8 +285,8 @@ def mip_model_complete(data_in, max_seconds=5000):
     # if a route reaches a patient, it needs to pass through the center
     for (route, patient) in av_route_patient:
         model += route_patient[route, patient] <= \
-        pulp.lpSum(route_arc[route, patient[0], c]
-                   for c in centers if (route, patient[0], c) in av_route_centers)
+                 pulp.lpSum(route_arc[route, patient[0], c]
+                            for c in centers if (route, patient[0], c) in av_route_centers)
 
     # route needs to start after job finishes, if assigned.
     for (route, job) in av_route_job:
@@ -303,8 +304,9 @@ def mip_model_complete(data_in, max_seconds=5000):
     cost_prod_fixed = costs['production']['fixed']
     cost_prod_var = costs['production']['variable']
 
-    cost_arc = {(c1, c2): data_in['travel'][c1, c2].dist * costs['route']['kilometer'] +
-                          data_in['travel'][c1, c2].times * costs['route']['minute']
+    cost_arc = {(c1, c2):
+                    data_in['travel'][c1, c2].dist * costs['route']['kilometer'] +
+                    data_in['travel'][c1, c2].times * costs['route']['minute']
                 for c1, c2 in data_in['travel']}
     cost_arc[0, 0] = 0
 
@@ -333,10 +335,10 @@ def mip_model_complete(data_in, max_seconds=5000):
     _route_job_patient = [(r, j, p) for r, j, p in av_route_job_patient if route_job_patient[(r, j, p)].value()]
     _route_arcs = [_tup for _tup in av_route_centers if route_arc[_tup].value()]
     solution = {
-        'jobs_start': _job_start_time
-        , 'jobs_type': _job_type
-        , 'routes_start': _route_start_time
-        , 'routes_visit': _route_arrival
-        , 'route_job_patient': _route_job_patient
+        'jobs_start': _job_start_time,
+        'jobs_type': _job_type,
+        'routes_start': _route_start_time,
+        'routes_visit': _route_arrival,
+        'route_job_patient': _route_job_patient,
     }
     return solution

@@ -3,11 +3,12 @@ import mopta2017.heuristics as heuristics
 import mopta2017.tests as tests
 import mopta2017.auxiliar as aux
 import mopta2017.models as models
+import pickle
 
 data_dir = "../data/20170326/"
 data_in = data_import.get_data_clean(data_dir)
 solution_2 = heuristics.initial_solution(data_in)
-solution = models.mip_model_complete(data_in, 5000)
+solution = models.mip_model_complete(data_in, 10000)
 sol_costs = tests.get_costs(solution, data_in)
 tests.check_solution(solution, data_in)
 uncovered = tests.patients_not_covered(solution, data_in)
@@ -24,3 +25,14 @@ aux.limit_start_jtype_patient(data_in)
 
 # tests:
 # data = get_main_data(data_dir)
+
+if False:
+    path = r'C:\Users\Franco\Documents\Projects\baobab\mopta2017\results\solution_instance6.pickle'
+
+    with open(path, 'wb') as f:
+        pickle.dump(solution, f)
+
+    with open(path, 'rb') as f:
+        # The protocol version used is detected automatically, so we do not
+        # have to specify it.
+        data = pickle.load(f)
