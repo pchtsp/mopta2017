@@ -2,9 +2,9 @@ import os
 import re
 from collections import namedtuple
 
-
 travel = namedtuple("Travel", ['times', 'dist'])
 line = namedtuple("Line", ['time', 'dosages', 'radio'])
+patient = namedtuple("Patient", ['min', 'max', 'num'])
 
 
 def get_data_clean(data_directory):
@@ -21,14 +21,19 @@ def get_data_clean(data_directory):
         'radio': format_radio(file_data)
     }
 
+    # We store the real cost of each arc. This is to save having to do it afterwards.
+    # Also, since we will add times to the original arcs' times.
+    params['travel_costs'] = format_travel_costs(params['travel'], params['costs']['route'])
+
     # we will add unloading times to the transport time depending on the destination:
     # it doesn't make sense to have unloading times in the production node.
+    # also: the dosage needs to arrive 30 minutes before the patient,
+    #   so we'll be adding 30 minutes to the transport time.
     unloading_times = format_waiting_params(file_data['S_j'])
     unloading_times[0] = 0
     for (i, j) in params['travel']:
-        new_time = params['travel'][(i, j)].times + unloading_times[j]
-        params['travel'][(i, j)] = \
-            travel(new_time, params['travel'][(i, j)].dist)
+        new_time = params['travel'][(i, j)].times + unloading_times[j] + 30
+        params['travel'][(i, j)] = travel(new_time, params['travel'][(i, j)].dist)
 
     return params
 
@@ -119,6 +124,21 @@ def format_travel_times_distances(times, distances):
     return dict_out
 
 
+def format_travel_costs(data_travel, costs_travel):
+    """
+    :param data_travel: distances and times for each pair
+    :param costs_travel: fixed costs per distance and time
+    :return: costs per arc
+    """
+
+    costs = {arc: data_travel[arc].times * costs_travel['minute'] +
+                 data_travel[arc].dist * costs_travel['kilometer']
+                        for arc in data_travel}
+
+    costs[0, 0] = 0
+    return costs
+
+
 def format_appointments_time(times):
     """
     :param times: sequence of time of the day for each client.
@@ -135,7 +155,7 @@ def format_appointments_time(times):
                 time = 0
             else:
                 time = float(hour)*60 + float(minute)
-            dict_out[(int(center), j)] = time
+            dict_out[(int(center), j)] = patient(time, time, 1)
 
     return dict_out
 

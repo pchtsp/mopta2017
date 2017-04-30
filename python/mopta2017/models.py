@@ -4,7 +4,10 @@ import numpy as np
 import sklearn.cluster as cluster
 import math
 
-def mip_model_complete(data_in, max_seconds=5000):
+
+def mip_model_complete(data_in, max_seconds=5000, cutoff=None):
+
+    # TODO: change logic to match new structure of demand
 
     # We define the main sets:
     patients = list(data_in['demand'].keys())
@@ -14,14 +17,14 @@ def mip_model_complete(data_in, max_seconds=5000):
     vehicles = list(range(data_in['sets']['vehicles']))
     prod_node = 0
     # #### TEMPORAL:
-    centers = list(range(8))
-    patients = [p for p in patients if p[0] in centers]
-    vehicles = list(range(5))
-    lines = list(range(4))
-    num_routes_per_veh = 2
+    centers = [0, 1, 2, 3]
+    patients = [p for p in patients if p[0] in centers if p[1] <= 20]
+    vehicles = [0, 1]
+    lines = [0, 1]
+    num_routes_per_veh = 3
     num_jobs_slowest_line = 3
     step = 2
-    # #### TEMPORAL:
+    # #### TEMPORAL
     # maximum parameters:
     ub = {
         'time': 24*60,  # one day
@@ -32,6 +35,7 @@ def mip_model_complete(data_in, max_seconds=5000):
 
     # auxiliary sets
     # av means available
+
     # Job creation:
     num_jobs = sorted(range(num_jobs_slowest_line, len(lines)*step + num_jobs_slowest_line, step), reverse=True)
     # assumption: first job takes the fastest job types and the most number of jobs:
@@ -46,14 +50,12 @@ def mip_model_complete(data_in, max_seconds=5000):
     routes = [(veh, route_num) for veh in vehicles for route_num in range(num_routes_per_veh)]
     routenum_per_veh = {veh: sorted(route[1] for route in routes if route[0] == veh) for veh in vehicles}
 
-    # TODO: I need to decide a better approach at clustering patients into routes.
     arc_dist = {arc: travel.dist for arc, travel in data_in['travel'].items()}
     for center in centers:
         arc_dist[center, center] = 0
     arc_dist_array = np.array([[arc_dist[center, center2]
                                 for center2 in centers if center2 != prod_node]
                                for center in centers if center != prod_node])
-    # half_vehicles = int(len(vehicles)/2)
     half_centers = math.ceil((len(centers) - 1)/2)
     n_clusters = min(len(vehicles), int(half_centers))
     center_clusters_list = cluster.KMeans(n_clusters=n_clusters).fit(arc_dist_array).labels_
@@ -144,6 +146,9 @@ def mip_model_complete(data_in, max_seconds=5000):
     job_patient = pulp.LpVariable.dicts("job_patient", av_job_patient, 0, 1, pulp.LpInteger)
     route_patient = pulp.LpVariable.dicts("route_patient", av_route_patient, 0, 1, pulp.LpInteger)
 
+    # objective function
+    # objective = pulp.LpVariable("objective", lowBound=0)
+
     # CONSTRAINT
     arc_time = {arc: travel.times for arc, travel in data_in['travel'].items()}
     arc_time[0, 0] = 0
@@ -171,10 +176,10 @@ def mip_model_complete(data_in, max_seconds=5000):
                             for j_type in job_types if (job, j_type) in av_job_type) == job_used[job],\
                  "job_used_assign_type_{}".format(job)
 
-        # if a job is used (this is enforced by the type constraint already).
-        # it has a production equal to its type
-        # it has radioactivity equal to its type
-        # it has times equal to its type
+    # if a job is used (this is enforced by the type constraint already).
+    # it has a production equal to its type
+    # it has radioactivity equal to its type
+    # it has times equal to its type
     for job in jobs:
         model += job_production[job] == pulp.lpSum(job_type[job, j_type] * production[j_type].dosages
                                                    for j_type in job_types if (job, j_type) in av_job_type),\
@@ -210,7 +215,7 @@ def mip_model_complete(data_in, max_seconds=5000):
     for route in routes:
         model += route_start_time[route] == route_arrival[route, prod_node]
 
-    # for an arc to work, the arrival times needs to increase (cycle cutting).
+    # for an arc to work, the arrival times need to increase (cycle cutting).
     for r, c1, c2 in av_route_centers:
         if c2 == prod_node:
             continue
@@ -268,14 +273,14 @@ def mip_model_complete(data_in, max_seconds=5000):
 
     # sum of doses for a single job cannot exceed the production of the job
     for job in jobs:
-        model += pulp.lpSum(job_patient[job, patient]
+        model += pulp.lpSum(job_patient[job, patient] * data_in['demand'][patient].num
                             for patient in patients if (job, patient) in av_job_patient) <= job_production[job],\
         "Limit_patients_job_{}".format(job)
 
     # route needs to arrive to center before patient needs dosage
     for (route, patient) in av_route_patient:
         model += \
-            route_arrival[route, patient[0]] <= data_in['demand'][patient] +\
+            route_arrival[route, patient[0]] <= data_in['demand'][patient].min +\
                                                 (1 - route_patient[route, patient]) * ub['time']
 
     # if route is not used, it cannot take passengers
@@ -304,22 +309,18 @@ def mip_model_complete(data_in, max_seconds=5000):
     cost_prod_fixed = costs['production']['fixed']
     cost_prod_var = costs['production']['variable']
 
-    cost_arc = {(c1, c2):
-                    data_in['travel'][c1, c2].dist * costs['route']['kilometer'] +
-                    data_in['travel'][c1, c2].times * costs['route']['minute']
-                for c1, c2 in data_in['travel']}
-    cost_arc[0, 0] = 0
-
     model += pulp.lpSum([line_used[line] * cost_prod_fixed for line in lines] +
                         [job_type[job, j_type] * data_in['production'][j_type].time * cost_prod_var
                          for job, j_type in av_job_type] +
-                        [route_arc[r, c1, c2]*cost_arc[c1, c2] for r, c1, c2 in av_route_centers] +
+                        [route_arc[r, c1, c2] * data_in['travel_costs'][c1, c2] for r, c1, c2 in av_route_centers] +
                         [vehicle_used[veh] * costs['route']['fixed'] for veh in vehicles]
                         )
+    # if cutoff is not None:
+    #     model += objective <= cutoff
+    # model += objective
+
     # SOLVING
 
-    # model.solve(GLPK_CMD())
-    # max_seconds = 4000
     model.solve(pulp.PULP_CBC_CMD(maxSeconds=max_seconds, msg=1, fracGap=0))
 
     # FORMAT SOLUTION

@@ -7,8 +7,16 @@ import pickle
 
 data_dir = "../data/20170326/"
 data_in = data_import.get_data_clean(data_dir)
+
+# Optionally, we group patients according to their proximity
+data_in['demand'] = aux.group_patients(data_in=data_in, period_size=30)
+
 solution_2 = heuristics.initial_solution(data_in)
-solution = models.mip_model_complete(data_in, 10000)
+sol_costs = tests.get_costs(solution_2, data_in)
+tests.check_solution(solution_2, data_in)
+solution_limit = sum(sol_costs.values())
+solution_limit = 10000
+solution = models.mip_model_complete(data_in=data_in, max_seconds=5000, cutoff=solution_limit)
 sol_costs = tests.get_costs(solution, data_in)
 tests.check_solution(solution, data_in)
 uncovered = tests.patients_not_covered(solution, data_in)

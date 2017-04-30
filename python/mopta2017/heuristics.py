@@ -50,7 +50,8 @@ def initial_solution(data_in):
     #  ##################
 
     # trivial solution: each vehicle to one center.
-    vehicles = range(data_in['sets']['vehicles'])
+    # here, we will take as much as vehicles as necessary (which is not okay...)
+    vehicles = range(max(data_in['sets']['vehicles'], len(data_in['clients'])-1))
     arcs = data_in['travel'].keys()
     times_prod_to_center = {center: data_in['travel'][node1, center].times for node1, center in arcs if node1 == 0}
     times_center_to_prod = {center: data_in['travel'][center, node1].times for node1, center in arcs if node1 == 0}
@@ -78,9 +79,9 @@ def initial_solution(data_in):
     # basically: all the consumption between consecutive routes.
     center_demand = data_in['demand']
     centers = data_in['clients'].keys()
-    center_num_clients = {center: 0 for center in centers}
-    for (center, pos) in center_demand:
-        center_num_clients[center]+=1
+    center_num_groups = {center: 0 for center in centers}
+    for (center, pos), patient in center_demand.items():
+        center_num_groups[center] += 1
 
     # I prepare an ordered list of routes per center:
     veh_routes_per_center = {}
@@ -102,8 +103,8 @@ def initial_solution(data_in):
             continue
         for route in veh_routes_per_center[center]:
             arrive_time = route_arrival[route, center]
-            for pos in range(center_num_clients[center]):
-                if arrive_time <= center_demand[(center, pos)]:
+            for pos in range(center_num_groups[center]):
+                if arrive_time <= center_demand[(center, pos)].min:
                     route_patient[(route, (center, pos))] = 1
     route_patient = clean_dictionary(route_patient)
     # TODO: routes for the last hospital
@@ -141,18 +142,21 @@ def initial_solution(data_in):
     for job in jobs_ordered:
         for route, patient in route_patient:
             # we do some math to check the radioactive decay
-            time = center_demand[patient] - job_end_times[job]
-            radio_patient = get_radioactivity(job_initial_radio[job], time, ratio_radio)
+            time_first_patient = center_demand[patient].min - job_end_times[job]
+            time_last_patient = center_demand[patient].max - job_end_times[job]
+
+            radio_first_patient = get_radioactivity(job_initial_radio[job], time_first_patient, ratio_radio)
+            radio_last_patient = get_radioactivity(job_initial_radio[job], time_last_patient, ratio_radio)
 
             # we do some checks to see if it makes sense to make the assignment:
-            if not (min_radio <= radio_patient <= max_radio) or \
+            if not (radio_first_patient <= max_radio and radio_last_patient >= min_radio) or \
                 job_remain_production[job] == 0 or \
                 route_start_time[route] <= job_end_times[job] or \
                 patient_satisfied[patient] != 0:
                 continue
 
             # if this is a good candidate, then assign jobs, routes and patients:
-            job_remain_production[job] -= 1
+            job_remain_production[job] -= center_demand[patient].num
             patient_satisfied[patient] = 1
             route_job_patient[route, job, patient] = 1
 
