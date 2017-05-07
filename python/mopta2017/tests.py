@@ -87,19 +87,22 @@ def get_overlapping_routes_in_veh(solution, data_in):
                       for route in routes}
     route_last_visit_time = {route: route_end_info[route][1] for route in routes}
     route_last_visit_node = {route: route_end_info[route][0][1] for route in routes}
-    route_end = {route: route_last_visit_time[route] + data_in['travel'][route_last_visit_node[route], 0].times
-                 for route in routes}
 
-    routes_per_veh = {veh: [route for route in routes if route[0] == veh] for veh in vehicles}
+    #  if route_last_visit_node[route], the route was not used
+    route_end = {route: route_last_visit_time[route] + data_in['travel'][route_last_visit_node[route], 0].times
+                 for route in routes if route_last_visit_node[route] != 0}
+
+    routes_per_veh = {veh: [route for route in routes if route[0] == veh if route_last_visit_node[route] != 0]
+                      for veh in vehicles }
 
     cliques = [(route, route2) for veh in vehicles for route in routes_per_veh[veh]
                for route2 in routes_per_veh[veh] if route[1] != route2[1]
                ]
 
-    ovelapping = [(route, route2) for (route, route2) in cliques
+    overlapping = [(route, route2) for (route, route2) in cliques
                   if route_start[route2] >= route_start[route] >= route_end[route2]]
 
-    return ovelapping
+    return overlapping
 
 
 def get_routes_before_job(solution, data_in):

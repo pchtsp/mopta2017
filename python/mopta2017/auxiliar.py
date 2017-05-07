@@ -1,5 +1,24 @@
 import math
 from collections import namedtuple
+import os
+import datetime
+import pickle
+
+
+def load_solution(path):
+    if not os.path.exists(path):
+        return False
+    with open(path, 'rb') as f:
+        return pickle.load(f)
+
+
+def export_solution(path, obj):
+    if not os.path.exists(path):
+        return False
+    path = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d%H%M") + ".pickle")
+    with open(path, 'wb') as f:
+        pickle.dump(obj, f)
+    return True
 
 
 def clean_dictionary(dictionary, default_value=0):
@@ -38,7 +57,7 @@ def get_radioactivity(initial_radio, time, decay):
     :param decay: % of decay every 30 minutes
     :return: radioactivity after time passes
     """
-    return (decay**int(math.ceil(time/30))) * initial_radio
+    return (decay**(time/30)) * initial_radio
 
 
 def get_time_from_radio(initial_radio, end_radio, decay):
@@ -48,7 +67,7 @@ def get_time_from_radio(initial_radio, end_radio, decay):
     :param decay: % of decay every 30 minutes
     :return: time in minutes to reach that level or end_radio
     """
-    return round(math.log(end_radio / initial_radio, decay) * 30)
+    return math.log(end_radio / initial_radio, decay) * 30
 
 
 def limit_start_jtype_patient(data_in, min_start=False):
@@ -63,23 +82,39 @@ def limit_start_jtype_patient(data_in, min_start=False):
 
     # the minimum start time assumes the minimum radioactivity level and
     # the time the latest patient will be served in the group.
-    string_q = "min"
-    patient_time = {patient: data_in['demand'][patient].max for patient in patients}
-    if not min_start:
-        # the maximum start time assumes the maximum radioactivity level and
-        # the time the earliest patient will be served in the group.
-        string_q = "max"
-        patient_time = {patient: data_in['demand'][patient].min for patient in patients}
+
+    # the maximum start time assumes the maximum radioactivity level and
+    # the time the earliest patient will be served in the group.
+
+    string_q = "max"
+    # we decide the reference time, based on the bound:
+    patient_time = {patient: data_in['demand'][patient].min for patient in patients}
+    if min_start:
+        string_q = "min"
+        patient_time = {patient: data_in['demand'][patient].max for patient in patients}
 
     jtype_time = {j_type: get_time_from_radio(
         data_in['production'][j_type].radio,
         data_in['radio'][string_q],
         data_in['radio']['decay']) for j_type in job_types}
 
+    # maximum times we round them down to constraint them further
+    # minimum times we round them up to constraint them further
     start_jtype_patient = {(j_type, patient):
-                               patient_time[patient] - (jtype_time[j_type] + data_in['production'][j_type].time)
+                               math.floor((patient_time[patient] -
+                                           jtype_time[j_type] -
+                                           data_in['production'][j_type].time
+                                           ) / 30) * 30
                            for j_type in job_types for patient in patients
                            }
+    if min_start:
+        start_jtype_patient = {(j_type, patient):
+                                   math.ceil((patient_time[patient] -
+                                             jtype_time[j_type] -
+                                              data_in['production'][j_type].time
+                                              ) / 30) * 30
+                               for j_type in job_types for patient in patients
+                               }
     start_jtype_patient = {key: value for key, value in start_jtype_patient.items() if value > 0}
     return start_jtype_patient
 
