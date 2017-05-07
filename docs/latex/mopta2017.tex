@@ -1,0 +1,157 @@
+
+\documentclass[11pt,openright,titlepage]{report}
+
+
+% Configuración page size y márgenes (inner: left, outer: right)
+\usepackage[a4paper, inner=3cm, outer=3.25 cm, top=3.25 cm, bottom = 3.5 cm,
+            headheight=2cm, voffset=0.5cm, headsep=1.5cm, footskip=1.5cm]{geometry}
+            
+
+% Paquetes necesarios o interesantes             
+\usepackage[utf8]{inputenc}    % Escribir tildes sin código
+\usepackage[spanish]{babel}    % Escribir en español
+\usepackage{graphicx}          % Gráficos 
+\usepackage{fancyhdr}          % Personalizar estilo página
+%\usepackage{fancyheadings}     % Para los headers y footers (antiguo: no usar, ahora es fancyhdr) 
+\usepackage{color}             % Foreground and background color management
+\usepackage[usenames,dvipsnames,table]{xcolor}   % Permite modificar tonos de color de forma sencilla
+\usepackage{import}            % Importar ficheros de carpetas dentro de este proyecto
+\usepackage{listings}          % Permite pegar texto sin formato. Específico para pegar código
+\usepackage{placeins}          % Float barriers para imágenes/tablas/etc
+\usepackage{float}             % Usar [H] para tablas
+\usepackage{amsmath}           % Fórmulas matemáticas
+\usepackage{verbatimbox}       % Encuandrar en cajas texto sin formato (verbatim)
+\usepackage{background}        % Personalizar background 
+\usepackage{tikz}              % Para graficar desde latex
+\usepackage{tikz-qtree}        % Para dibujar esquemas en forma de árbol
+\usepackage{tgadventor}        % Sans serif font   
+\usepackage{charter}           % Serif font           
+\usepackage{tgtermes}          % Serif font
+\usepackage{tgpagella}         % Serif font
+\usepackage{soul}              % Para separar con guiones las palabras cuando no caben en la línea de texto
+\usepackage{titlesec}          % Select alternative section titles
+\usepackage{hyperref}          % Vínculos
+
+
+% Colores adicionales
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\definecolor{darkBlue}{RGB}{0,0,120}
+
+
+% Configuración de los hipervínculos
+\hypersetup{
+     colorlinks   = true,
+     citecolor    = gray,
+     urlcolor     = CadetBlue,
+     linkcolor    = darkBlue,
+     %linktoc      = all
+}
+
+
+  %Header
+\pagestyle{fancy}
+\fancyhead{} % get rid of headers
+\renewcommand{\headrulewidth}{0pt}
+\newcommand{\changefont}{\fontfamily{qag}\selectfont}
+\rhead{\changefont{The USB \\ Mopta 2017 competition}} 
+% Para las páginas con \chapter
+\fancypagestyle{plain}{
+\fancyhead{} % get rid of headers
+\rhead{\changefont{The USB \\ Mopta 2017 competition}}
+}
+
+
+  %Formato de títulos des capítulos, secciones, etc
+\titleformat{\chapter}
+ {\LARGE\fontfamily{qag}\selectfont\bfseries\color{Bittersweet}}{\thechapter. }{0pt}{}
+\titleformat{\section}
+{\color{BurntOrange}\Large\fontfamily{qag}\selectfont\bfseries}
+{\color{BurntOrange}\thesection}{1em}{}
+\titleformat{\subsection}
+{\color{BurntOrange!85!}\large\bfseries}
+{\color{BurntOrange!85!}\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+{\color{BurntOrange!85!}\normalsize\bfseries}
+{\color{BurntOrange!85!}\thesubsubsection}{1em}{}
+
+ 
+ % Para códigos
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+ 
+\lstset{style=mystyle}
+
+
+%  CONFIGURACIÓN DEL DOCUMENTO
+
+\begin{document}
+
+% Importa la portada
+%\import{pages/}{PortadaClientes.tex}
+
+
+%\fontfamily{qag}\selectfont   % TEX Gyre Adventor        
+\fontfamily{bch}\selectfont    % charter           
+
+
+% Crea la tabla de contenidos
+\SetBgContents{}
+\pagenumbering{gobble}
+% Los vínculos de la tabla serán negros
+\hypersetup{linkcolor=black} 
+%\tableofcontents\clearpage
+% El resto de vínculos serán azules
+\hypersetup{linkcolor=darkBlue}
+
+% Crea el logo en la esquina derecha - baobab
+\SetBgScale{1}
+\SetBgAngle{0}
+\SetBgOpacity{1} 
+\SetBgHshift{8cm}
+\SetBgVshift{12.6cm}
+%\SetBgContents{\includegraphics[width=1.1cm,scale=0.2]{imagenes/arbol_baobab.jpg}}
+% Crea el logo en la esquina izquierda - cliente
+%\SetBgScale{1}
+%\SetBgAngle{0}
+%\SetBgOpacity{1} 
+%\SetBgHshift{-7cm}
+%\SetBgVshift{12.6cm}
+%\SetBgContents{\includegraphics[width=1.1cm,scale=1.0]{imagenes/LogoCliente.png}}
+
+% Footer
+\let\oldfootnotesize\footnotesize
+\renewcommand*{\footnotesize}{\oldfootnotesize\scriptsize}
+% Empieza a contar desde 1
+\setcounter{page}{1}
+\renewcommand{\thepage}{\arabic{page}}
+
+% Importar las secciones del documento. Ejemplo:
+%\import{Pages/}{MiFichero.tex}
+
+\include{pages/intro}
+\include{pages/Definiciones}
+\include{pages/Modelo}
+\include{pages/Implantacion}
+
+%\include{pages/ModeloEstadistico}
+
+\end{document}
