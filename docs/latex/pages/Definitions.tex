@@ -1,0 +1,102 @@
+\chapter{Definitions}
+\label{def}
+
+Following are several concepts related to the problem at hand. These terms will be later referenced in the model section (section \ref{matmod}.
+
+\section{Production}
+
+\subsection{Production line and type}
+\label{def:lines}
+
+A production line consists on each of the places where production can happened. Each line works independently from the other an are identical in their capacity to produce.
+
+They have an associated cost to be used at least once during the day.
+
+There exists a definite set of production "`drives"' that a line can be in. They have been called "`production types"'. Each type consists on a combination of three parameters:
+
+\begin{itemize}
+	\item Time to produce.
+	\item Number of dosages to produce.
+	\item Radioactivity level of dosages when produced.
+\end{itemize}
+
+Each line can produce any of these production types and can change from producing one type to producing the other without any extra cost.
+
+\subsection{Production job}
+
+A production job consists of a given batch of dosages produced at a specific production line.
+
+It is represented by a tuple with numbers. The first one is the production line it belongs, the second is a correlative number.
+
+Jobs are defined in advance so that each production line has a number of candidate jobs available to potentially use.
+
+Also, each job needs to have assigned a "job type" (see \ref{def:lines} for more information).
+
+In order to reduce the size of the problem and break the symetry on the decision variables, each production line can produce only certain types of jobs. This way, the first production line can produce only the first two types of jobs.
+
+The maximum number of jobs per line also depends on which types of jobs the line can do. It is assumed that a line that only has particularly long job types available will not do many jobs.
+
+\section{Demand}
+
+\subsection{Center}
+
+Each center is a physical place where dosages are consumed during the day. There are both distances and times between each center. These distance and times matrices are considered to be symmetrical.
+
+Each center has, in addition, a specific time to unload the dosages once the vehicle arrives.
+
+During the model formulation, centers can also be called nodes.
+
+\subsection{Clustering of centers}
+\label{def:cluster}
+
+Due to the number of combinations of possible routes (see section \ref{def:route}) that any vehicle can do, centers have been grouped into groups (or clusters).
+
+The clustering of centers has been achieved with a K-means algorithm using the distance matrix between centers. The production center has not been included in the clustering procedure given that this center will be included in every cluster.
+
+\subsection{Patient}
+
+Patients are represented as dosages that need to be administered in a given center and on a specific time.
+
+More generally, we define a patient as a number of dosages that need to be administered between a minimum and a maximum time. 
+
+A particular case of this formulation would be to treat each appointment as a patient. In this case, the patient would have a dosage of 1 and a minimum time equal to the maximum time.
+
+It is defined as a tuple of two numbers. The first one is the center to which the patient belongs, the second one is the correlative number of patient in the day.
+
+\section{Transport}
+
+\subsection{Vehicle}
+
+A vehicle is the means for transporting dosages between the production node and each of the centers. They need to do specific routes between each center in order to arrive on time for each patient's appointment.
+
+There is a finite number of vehicles, all identical. There is no capacity limit on the amount of dosages each vehicle can take in total and the the cost of the vehicle has three components:
+
+\begin{itemize}
+	\item Total distance traveled.
+	\item Total time traveled.
+	\item Usage of vehicle.
+\end{itemize}
+
+\subsection{Route}
+\label{def:route}
+
+A route is the specific travel of a single vehicle.
+
+It is defined by a tuple with two numbers. The first one is the vehicle that can do the route, the second one is the correlative number of route of that specific vehicle.
+
+Routes are pre-calculated, so each vehicle has the following information:
+
+\begin{itemize}
+	\item The number of routes it can do.
+	\item The centers the route has to visit, in case of being activated.
+\end{itemize}
+
+\subsection{Cluster-route}
+
+In order to assign groups of centers to vehicles, a clustering of centers has been made. The number of clusters depends on the total number of vehicles and centers available. See section \ref{def:cluster}.
+
+Each route, when active, needs to visit each one of the centers in the cluster. In a sense, it behaves similarly to a Travelling Salesman Problem with time windows.
+
+Given the clustering of centers explained in section \ref{def:cluster}, not all vehicles can visit all centers. Dependind on the configuration adopted and the number of vehicles and centers, each vehicle will be able to visit between 1 and 3 clusters. 
+
+Furthermore, each specific route of a vehicle (see section \ref{def:route}) will only be able to visit 1 cluster. The idea is to have many different vehicles capable of servicing the same cluster. This way it is possible to reduce the number of vehicles if necessary without compromising feasibility.

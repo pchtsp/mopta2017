@@ -1,60 +1,18 @@
 \chapter{Mathematical formulation}
+\label{matmod}
 
-The model is essentially an assignment problem where each patient gets assigned a vehicle's route and a production job.
-
-\section{Production job}
-
-A production job consists of a given batch of dosages produced at a specific production line.
-
-It is represented by a tuple with numbers. The first one is the production line it belongs, the second is a correlative number.
-
-Jobs are defined in advance so that each production line has a number of candidate jobs available to potentially use.
-
-Also, each job needs to have assigned a "job type" (see FALTA for more information).
-
-In order to reduce the size of the problem and break the symetry on the decision variables, each production line can produce only certain types of jobs. This way, the first production line can produce only the first two types of jobs.
-
-The maximum number of jobs per line also depends on which types of jobs the line can do. It is assumed that a line that only has particularly long job types available will not do many jobs.
-
-\section{Patient}
-
-Patients are represented as dosages that need to be administered in a given center and on a specific time.
-
-More generally, we define a patient as a number of dosages that need to be administered between a minimum and a maximum time. 
-
-A particular case of this formulation would be to treat each appointment as a patient. In this case, the patient would have a dosage of 1 and a minimum time equal to the maximum time.
-
-It is defined as a tuple of two numbers. The first one is the center to which the patient belongs, the second one is the correlative number of patient in the day.
-
-\section{Route}
-
-A route is the specific travel of a single vehicle.
-
-It is defined by a tuple with two numbers. The first one is the vehicle that can do the route, the second one is the correlative number of route of that specific vehicle.
-
-Routes are pre-calculated, so each vehicle has the following information:
-
-* The number of routes it can do.
-* The centers the route has to visit, in case of being activated.
-
-In order to assign groups of centers to vehicles, a clustering of centers has been made. The number of clusters depends on the total number of vehicles and centers available. See section \ref{clusters}.
-
-Each route, when active, needs to visit each one of the centers in the cluster. In a sense, it behaves similarly to a Travelling Salesman Problem with time windows.
-
-\subsection{Clusters of centers}
-\label{clusters}
-
-The clustering of centers has been achieved with a K-means algorithm using the distance matrix between centers. The production center has not been included in the clustering procedure.
+The model is essentially an assignment problem where each patient gets assigned a vehicle's route and a production job. See \ref{def} for more information on the terminology used.
 
 \section{Sets}
 
-* Production lines: each production line that can be used to produce dosages.
-* Job types: each one of the different ways that dosages can be produced.
-* Vehicles: each transport that can be used simmultaneously to take dosages from the production center to the demand centers.
-* Centers: each of the physical locations where dosages are applied to patients.
-* Jobs: each production batch that is done at every production line. Each job has only one job type.
-* Routes: each of the travels that every vehicle does when being used.
-* Patients: each of the patients that needs dosages.
+
+%* Production lines: each production line that can be used to produce dosages.
+%* Job types: each one of the different ways that dosages can be produced.
+%* Vehicles: each transport that can be used simmultaneously to take dosages from the production center to the demand centers.
+%* Centers: each of the physical locations where dosages are applied to patients.
+%* Jobs: each production batch that is done at every production line. Each job has only one job type.
+%* Routes: each of the travels that every vehicle does when being used.
+%* Patients: each of the patients that needs dosages.
 
 \begin{tabular}{p{15mm}lp{105mm}}
     $\mathcal{L}$    & : & all production lines \\
@@ -83,7 +41,7 @@ The clustering of centers has been achieved with a K-means algorithm using the d
 
 \subsection{Transport variables}
 
-\begin{tabular}{p{15mm}lp{105mm}}
+\begin{tabular}{p{30mm}lp{90mm}}
     $routeUsed_{r}$    & : & 1 if route $r \in \mathcal{R}$ will be used  \\  
     $vehicleUsed_{v}$    & : & 1 if vehicle $v \in \mathcal{V}$ will be used  \\  
     $routeArrival_{rc}$    & : & minute at which route $r \in \mathcal{R}$ arrives to center $c \in \mathcal{C}$ \\  
@@ -95,12 +53,44 @@ The clustering of centers has been achieved with a K-means algorithm using the d
 
 \subsection{Demand variables}
 
-\begin{tabular}{p{15mm}lp{105mm}}
+\begin{tabular}{p{30mm}lp{90mm}}
     $routeJobPatient_{rjp}$    & : & 1 if route $r$ will be used to transport a dosage from job $j$ to patient $p$ \\  
-    $routeJob{rj}$    & : & 1 if route $r$ is used to transport dosages for job $j$ \\  
+    $routeJob_{rj}$    & : & 1 if route $r$ is used to transport dosages for job $j$ \\  
     $jobPatient_{jp}$    & : & 1 if job $j$ is used to produce dosages for patient $p$ \\  
     $routePatient_{rp}$    & : & 1 if route $r$ is used to transport dosages for patient $p$\\
 \end{tabular}
 \bigskip
 
 
+\section{Constraints}
+
+
+\begin{align}
+\mbox{MIN} \quad &
+                     \sum_{a \in \mathcal{A},c \in \mathcal{C}}C^{T}_{R_ac}n_{ac}    \label{eq:fo1}\\
+\mbox{s. t.:} \quad &  \notag \\		
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % all shops are audited
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+             & \sum_{a \in \mathcal{A}}n_{ac}\geq N_c 
+               \hspace{10mm} c \in \mathcal{CT}\label{eq:allaudited}\\		
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % the number of audit for auditor is upper bounded by the time horizon
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+             & \sum_{c \in \mathcal{CT}}n_{ac}\leq (2-PART_a)\times D 
+               \hspace{10mm} a \in \mathcal{A}\label{eq:upperbound}\\
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % consitency
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+             & n_{ac}\leq x_{ac}N_c
+               \hspace{10mm} a \in \mathcal{A}\, c \in \mathcal{CT}\label{eq:consistency1}\\		  		  
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
+    % variables domains
+    %%%%%%%%%%%%%%%%%%%%%%%%%%
+             & x_{ac}  \in \{0,1\}
+               \hspace{10mm} a \in \mathcal{A}, \, c \in \mathcal{CT}
+               \label{eq:dom-x} \\
+             & n_{ac}  \geq 0
+               \hspace{10mm} a \in \mathcal{A}, \, c \in \mathcal{CT}
+               \label{eq:dom-xS} \\
+\end{align}	
