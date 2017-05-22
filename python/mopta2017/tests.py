@@ -49,8 +49,8 @@ def patients_radioactive(solution, data_in):
 def get_job_capacity(solution, data_in, all_jobs=False):
 
     job_demand = {job: 0 for job in solution['jobs_start']}
-    for (_, job, _) in solution['route_job_patient']:
-        job_demand[job] += 1
+    for (_, job, p) in solution['route_job_patient']:
+        job_demand[job] += data_in['demand'][p].num
     # job_demand = clean_dictionary(job_demand)
     job_idle_capacity = {job: data_in['production'][solution['jobs_type'][job]].dosages - job_demand[job]
                          for job in job_demand}

@@ -29,6 +29,7 @@ def get_data_clean(data_directory):
     # it doesn't make sense to have unloading times in the production node.
     # also: the dosage needs to arrive 30 minutes before the patient,
     #   so we'll be adding 30 minutes to the transport time.
+    # TODO: move the 30 minute to the constraint.
     unloading_times = format_waiting_params(file_data['S_j'])
     unloading_times[0] = 0
     for (i, j) in params['travel']:
