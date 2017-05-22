@@ -3,7 +3,9 @@
 
 The model is essentially an assignment problem where each patient gets assigned a vehicle's route and a production job. See \ref{def} for more information on the terminology used.
 
-\section{Sets}
+\section{Input data}
+
+\subsection{Sets}
 
 
 %* Production lines: each production line that can be used to produce dosages.
@@ -14,6 +16,8 @@ The model is essentially an assignment problem where each patient gets assigned 
 %* Routes: each of the travels that every vehicle does when being used.
 %* Patients: each of the patients that needs dosages.
 
+In order to constraint variables and constraints, several sets of tuples have been declared. These sets include combinations of jobs, job types, patients, centers and routes. As explained in chapter \ref{def}, not all combinations were taken into account.
+
 \begin{tabular}{p{15mm}lp{105mm}}
     $\mathcal{L}$    & : & all production lines \\
     $\mathcal{T}$    & : & all job types \\                    
@@ -22,75 +26,203 @@ The model is essentially an assignment problem where each patient gets assigned 
     $\mathcal{J}$    & : & all jobs \\    
     $\mathcal{R}$    & : & all routes \\    
     $\mathcal{P}$    & : & all patients \\
+		$\mathcal{JL}_{l}$    & : & all jobs of line $l \in \mathcal{L}$ \\
+		$\mathcal{JP}_{p}$    & : & all jobs available for patient $p$ \\
+		$\mathcal{RP}_p$    & : & all routes available for patient $p$ \\
+		$\mathcal{RJP}_p$    & : & all ($r \in \mathcal{R}$, $j \in \mathcal{J}$) available for patient $p \in \mathcal{P}$ \\
+		$\mathcal{PJ}_j$    & : & all $p \in \mathcal{P}$ reachable by job $j \in \mathcal{J}$ \\
+		$\mathcal{C}_p$    & : & the center $c \in \mathcal{C}$ for patient $p \in \mathcal{P}$ \\
+		$\mathcal{RP}$    & : & all posible ($r \in \mathcal{R}$, $p \in \mathcal{P}$) combinations \\
+		$\mathcal{JP}$    & : & all posible ($j \in \mathcal{J}$, $p \in \mathcal{P}$) combinations \\
+		$\mathcal{RJ}$    & : & all posible ($r \in \mathcal{R}$, $j \in \mathcal{J}$) combinations \\
+		$\mathcal{RJP}$    & : & all posible ($r \in \mathcal{R},j \in \mathcal{J},p \in \mathcal{P}$) combinations \\
+		$\mathcal{TJP}$    & : & all posible ($t \in \mathcal{T},j \in \mathcal{J},p \in \mathcal{P}$) combinations \\
+		$\mathcal{RCC}$    & : & all posible ($r \in \mathcal{R}, c \in \mathcal{C}, c \in \mathcal{C}$) combinations \\
 \end{tabular}
 \bigskip
+
+\subsection{Parameters}
+
+The parameters $MIN\_START_{t,p}$ and $MAX\_START_{t,p}$ are derived from the radioactive information of the job types, the production times of the job types and the start and end times for patients' sessions.
+
+The rest of the parameters are input parameters read from the input files.
+
+\begin{tabular}{p{40mm}lp{80mm}}
+$PROD_t$ 								& : &		production of job type $t$ \\
+$PROD\_TIME_t$ 					& : &	production time for job type $t$ \\
+$TRAVEL\_TIME_{cc'}$ 		& : &	travel time to go from center $c$ to center $c'$ \\
+$MAX\_TIME$ 						& : & maximum time for starting any job \\
+$MIN\_START_{t,p}$ 			& : & minimum start time for job type $t$ to serve patient $p$ \\
+$MAX\_START_{t,p}$ 			& : & maximum start time for job type $t$ to serve patient $p$ \\
+$DEMAND_p$ 							& : & number of doses for patient $p$ \\
+$SESSION\_START_p$ 			& : & start of session for patient $p$ \\
+$C\_PROD\_FIXED$				& : & fixed cost for having a line open \\
+$C\_PROD\_VAR$					& : & variable cost for having a line working in any given hour \\
+$TRAVEL\_COST_{cc'}$		& : & fixed cost for travelling from center $c$ to center $c'$\\
+$C\_FIXED$							& : & fixed cost for using each vehicle at least once\\
+\end{tabular}
+\bigskip
+
 
 \section{Decision variables}
 
 \subsection{Production variables}
 
-\begin{tabular}{p{15mm}lp{105mm}}
+\begin{tabular}{p{30mm}lp{90mm}}
     $lineUsed_{l}$    & : & 1 if line $l \in \mathcal{L}$ will be used  \\  
-    $jobUsed_{j}$    & : & 1 if job $j \in \mathcal{J}$ will be used  \\  
+    $jobUsed_{j}$    	& : & 1 if job $j \in \mathcal{J}$ will be used  \\  
     $jobType_{jt}$    & : & 1 if job type $t \in \mathcal{T}$ is assigned to job $j \in \mathcal{J}$ \\  
-    $jobST_{j}$    & : & minute at which the job $j \in \mathcal{J}$ starts \\  
-%    $jobProd_{j}$    & : & minute at which the job $j \in \mathcal{J}$ starts \\  
-%    $jobTime_{j}$    & : & minute at which the job $j \in \mathcal{J}$ starts \\  
+    $jobST_{j}$    		& : & minute at which the job $j \in \mathcal{J}$ starts \\  
+    $jobProd_{j}$   	& : & dosages produced by job $j \in \mathcal{J}$ \\  
+    $jobTime_{j}$   	& : & production time of job $j \in \mathcal{J}$ \\  
 \end{tabular}
 \bigskip
 
 \subsection{Transport variables}
 
 \begin{tabular}{p{30mm}lp{90mm}}
-    $routeUsed_{r}$    & : & 1 if route $r \in \mathcal{R}$ will be used  \\  
+    $routeUsed_{r}$    	& : & 1 if route $r \in \mathcal{R}$ will be used  \\  
     $vehicleUsed_{v}$    & : & 1 if vehicle $v \in \mathcal{V}$ will be used  \\  
     $routeArrival_{rc}$    & : & minute at which route $r \in \mathcal{R}$ arrives to center $c \in \mathcal{C}$ \\  
-    $routeST_{r}$    & : & minute at which the route $r \in \mathcal{R}$ starts \\
-    $routeArc_{rcc'}$    & : & 1 if route $r \in \mathcal{R}$ visits center $c'$ inmediately after center $c'$  \\
-    $routeET_{r}$    & : & minute at which the route $r \in \mathcal{R}$ finishes \\
+    $routeST_{r}$    		& : & minute at which the route $r \in \mathcal{R}$ starts \\
+    $routeArc_{rcc'}$   & : & 1 if route $r \in \mathcal{R}$ visits center $c'$ inmediately after center $c'$  \\
+    $routeET_{r}$   		& : & minute at which the route $r \in \mathcal{R}$ finishes \\
 \end{tabular}
 \bigskip
 
 \subsection{Demand variables}
 
-\begin{tabular}{p{30mm}lp{90mm}}
+\begin{tabular}{p{40mm}lp{80mm}}
     $routeJobPatient_{rjp}$    & : & 1 if route $r$ will be used to transport a dosage from job $j$ to patient $p$ \\  
-    $routeJob_{rj}$    & : & 1 if route $r$ is used to transport dosages for job $j$ \\  
-    $jobPatient_{jp}$    & : & 1 if job $j$ is used to produce dosages for patient $p$ \\  
-    $routePatient_{rp}$    & : & 1 if route $r$ is used to transport dosages for patient $p$\\
+    $routeJob_{rj}$    					& : & 1 if route $r$ is used to transport dosages for job $j$ \\  
+    $jobPatient_{jp}$    				& : & 1 if job $j$ is used to produce dosages for patient $p$ \\  
+    $routePatient_{rp}$    			& : & 1 if route $r$ is used to transport dosages for patient $p$\\
 \end{tabular}
 \bigskip
 
 
 \section{Constraints}
 
+\subsection{Objective function}
+
+\begin{align*}
+\mbox{MIN} \quad &
+	\label{eq:fo}\\
+& \sum_{l \in \mathcal{L}} lineUsed_l \times C\_PROD\_FIXED + \notag\\
+& \sum_{(j, t) \in \mathcal{JT}} C\_PROD\_VAR \times jobType_{jt} \times PROD\_TIME_t + \notag\\
+& \sum_{(r, c, c') \in \mathcal{RCC}} routeArc{rcc'} \times TRAVEL\_COST_{cc'} + \notag\\
+& \sum_{v \in \mathcal{V}} vehicleUsed_v \times C\_FIXED
+\end{align*}
+
+
+
+\subsection{Production}
 
 \begin{align}
-\mbox{MIN} \quad &
-                     \sum_{a \in \mathcal{A},c \in \mathcal{C}}C^{T}_{R_ac}n_{ac}    \label{eq:fo1}\\
-\mbox{s. t.:} \quad &  \notag \\		
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % all shops are audited
+    % Starting times
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-             & \sum_{a \in \mathcal{A}}n_{ac}\geq N_c 
-               \hspace{10mm} c \in \mathcal{CT}\label{eq:allaudited}\\		
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % the number of audit for auditor is upper bounded by the time horizon
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-             & \sum_{c \in \mathcal{CT}}n_{ac}\leq (2-PART_a)\times D 
-               \hspace{10mm} a \in \mathcal{A}\label{eq:upperbound}\\
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % consitency
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-             & n_{ac}\leq x_{ac}N_c
-               \hspace{10mm} a \in \mathcal{A}\, c \in \mathcal{CT}\label{eq:consistency1}\\		  		  
-    %%%%%%%%%%%%%%%%%%%%%%%%%%
-    % variables domains
-    %%%%%%%%%%%%%%%%%%%%%%%%%%
-             & x_{ac}  \in \{0,1\}
-               \hspace{10mm} a \in \mathcal{A}, \, c \in \mathcal{CT}
-               \label{eq:dom-x} \\
-             & n_{ac}  \geq 0
-               \hspace{10mm} a \in \mathcal{A}, \, c \in \mathcal{CT}
-               \label{eq:dom-xS} \\
-\end{align}	
+		& jobST_{j} \geq jobST_{j-1} + jobTime_{j} 
+				\hspace{10mm} j \in \mathcal{J}\\
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		% job used if previous is used
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& jobUsed_{j-1} \geq jobUsed_{j} 
+				\hspace{10mm}  j \in \mathcal{J}\\
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		% Lines is used if job is used:
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& lineUsed_{l} \geq jobUsed_{j}, j \in \mathcal{JL_l} 
+				\hspace{10mm}  l \in \mathcal{L} \\
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		% if a job is used, it has only one type
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& \sum_{t \in \mathcal{T}} jobType_{jt} = jobUsed_{j} 
+				\hspace{10mm} j \in \mathcal{J}\\
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		% if a job is used, it has a production equal to its type
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& jobProd_{j} = \sum_{t \in \mathcal{T}} jobType_{jt} \times PROD_{t}
+				\hspace{10mm} j \in \mathcal{J}\\
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		%% if a job is used, it has times equal to its type
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& jobTime_{j} = \sum_{t \in \mathcal{T}}jobType_{jt} \times PROD\_TIME{t}
+				\hspace{10mm} j \in \mathcal{J}\\
+\end{align}
+
+\subsection{Transport}
+
+\begin{align}
+%$routeUsed_{r}$    	
+%$vehicleUsed_{v}$   
+%$routeArrival_{rc}$ 
+%$routeST_{r}$    		
+%$routeArc_{rcc'}$   
+%$routeET_{r}$   			
+		& routeET_{r} \ge routeArrival_{rc} + TRAVEL\_TIME{c0}
+				\hspace{10mm} r, c \in \mathcal{RC}\\
+		& vehicleUsed_{VEHICLE(r)} \ge vehicleUsed_{r}
+				\hspace{10mm} r \in \mathcal{R}\\
+		& routeST_{r} \ge routeST_{r-1}
+				\hspace{10mm} r \in \mathcal{R}\\
+		& routeST_{r} = routeArrival_{r0}
+				\hspace{10mm} r \in \mathcal{R}\\
+		% TODO: include domain with neighbors:
+		& routeArrival_{rc'} \ge TRAVEL\_TIME{cc'} + routeArrival_{rc} - \notag\\ 
+		& \hspace{10mm} MAX\_TIME \times (1 - routeArc_{rcc'})
+				\hspace{10mm} r \in \mathcal{R}, c, c' \in \mathcal{C} \\
+		& \sum_{c' \in \mathcal{C}} routeArc_{rcc'}  = routeUsed_{r}
+				\hspace{10mm} r, c \in \mathcal{RC} \\
+		& \sum_{c' \in \mathcal{C}} routeArc_{rc'c}  = routeUsed_{r}
+				\hspace{10mm} r, c \in \mathcal{RC} \\				
+\end{align}
+
+\subsection{Demand}
+
+\begin{align}
+%$routeJobPatient_{rjp}$
+%$routeJob_{rj}$    			
+%$jobPatient_{jp}$    		
+%$routePatient_{rp}$    
+%$lineUsed_{l}$  
+%$jobUsed_{j}$   
+%$jobType_{jt}$  
+%$jobST_{j}$    	
+%$jobProd_{j}$   
+%$jobTime_{j}$               
+		% RADIOACTIVITY:
+		& jobST_{j} \ge MIN\_START_{t,p} \times (jobType_{jt} + jobPatient_{jp} -1) \notag\\ 
+				&	\hspace{10mm} (t, j, p) \in \mathcal{TJP} \\
+		& jobST_{j} \le MAX\_START_{t,p} + (2 - jobType_{jt} + jobPatient_{jp}) \times MAX\_TIME \notag\\ 
+				& \hspace{10mm} (t, j, p) \in \mathcal{TJP} \\
+		% ASSIGNMENTS:
+		& \sum_{j \in \mathcal{JP_p}} jobPatient_{jp} = 1
+				\hspace{10mm} p \in \mathcal{P} \\
+		& \sum_{r \in \mathcal{RP_p}} routePatient_{rp} = 1
+				\hspace{10mm} p \in \mathcal{P} \\
+		& \sum_{(r, j) \in \mathcal{RJP}_p} routeJobPatient_{rjp} = 1
+				\hspace{10mm} p \in \mathcal{P} \\
+		%# sum of doses for a single job cannot exceed the production of the job
+		& \sum_{p \in \mathcal{PJ_j}} jobPatient_{jp} \times DEMAND_{p} \le jobProd_{j}
+				\hspace{10mm} j \in \mathcal{J} \\
+		%# route needs to arrive to center before patient needs dosage
+		& routeArrival_{rc} \le SESSION\_START_{p} + MAX\_TIME \times (1 - routePatient_{rp}) \notag\\ 
+				&	\hspace{10mm} (r, p) \in \mathcal{RP}, c = \mathcal{C}_p\\
+		%# if route is not used, it cannot take passengers
+		& routePatient_{rp} \le routeUsed_{r}
+				\hspace{10mm} (r, p) \in \mathcal{RP} \\
+    %# if a route reaches a patient, it needs to pass through the center
+		& routePatient_{rp} \le \sum_{c' \in \mathcal{C}} routeArc_{rcc'}
+				\hspace{10mm} (r, p) \in \mathcal{RP} \\
+    %# route needs to start after job finishes, if assigned.
+		& routeST_{r} \ge jobST_{j} + jobTime_{j} - (1 - routeJob_{rj}) \times MAX\_TIME \notag\\ 
+				&	\hspace{10mm} (r, j) \in \mathcal{RJ} \\
+	%# all three need to be assigned in order for the main variable to make sense
+		& routeJobPatient_{rjp} \le routeJob_{rj}	
+				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \\
+		& routeJobPatient_{rjp} \le jobPatient_{jp}
+				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \\
+		& routeJobPatient_{rjp} \le routePatient_{rp}
+				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \\
+\end{align}

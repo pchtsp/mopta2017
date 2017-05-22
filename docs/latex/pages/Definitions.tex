@@ -32,9 +32,13 @@ Jobs are defined in advance so that each production line has a number of candida
 
 Also, each job needs to have assigned a "job type" (see \ref{def:lines} for more information).
 
-In order to reduce the size of the problem and break the symetry on the decision variables, each production line can produce only certain types of jobs. This way, the first production line can produce only the first two types of jobs.
+\subsection{Job-Job type}
 
-The maximum number of jobs per line also depends on which types of jobs the line can do. It is assumed that a line that only has particularly long job types available will not do many jobs.
+In order to reduce the size of the problem and break the symetry on the decision variables, each production line can produce only certain types of jobs. For example, the first production line can produce only the first two types of jobs.
+
+We thus sacrifice optimality (we reduce some possibilities) in order not to have too many decision variables.
+
+The maximum number of jobs per line also depends on which types of jobs the line can do. It is assumed that a line that only has particularly long-duration job types available will not do many jobs.
 
 \section{Demand}
 
