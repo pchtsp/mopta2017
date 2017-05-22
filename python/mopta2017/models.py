@@ -180,14 +180,13 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     # it has radioactivity equal to its type
     # it has times equal to its type
     for job in jobs:
-        model += job_production[job] == pulp.lpSum(job_type[job, j_type] * production[j_type].dosages
+        model += job_production[job] <= pulp.lpSum(job_type[job, j_type] * production[j_type].dosages
                                                    for j_type in job_types if (job, j_type) in av_job_type),\
                  "job_production_{}".format(job)
-        # model += job_radio[job] <= job_used[job] * pulp.lpSum(job_type[job, j_type] * production[j_type].radio
-        #                                                       for j_type in job_types)
-        model += job_time[job] >= pulp.lpSum(job_type[job, j_type] * production[j_type].time
-                                             for j_type in job_types if (job, j_type) in av_job_type),\
-                 "job_time_{}".format(job)
+        for j_type in job_types:
+            if (job, j_type) in av_job_type:
+                model += job_time[job] >= job_type[job, j_type] * production[j_type].time,\
+                 "job_time_{}{}".format(job, j_type)
 
     # Transport
 
@@ -231,23 +230,20 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
 
     # Demand
 
-    # TODO: see if this can be improved...
     # the time since the production of job until the patient uses it cannot exceed a maximum
     # that depends on the type of job.
     for job, patient in av_job_patient:
-        model += \
-            job_start_time[job] >= pulp.lpSum(
-                [min_start_jtype_patient[j_type, patient] * job_type[job, j_type]
-                 for j_type in job_types if (job, j_type) in av_job_type if
-                 (j_type, patient) in min_start_jtype_patient]
-            ) - (1 - job_patient[job, patient]) * ub['max_job_start']
+        for j_type in job_types:
+            if (job, j_type) in av_job_type and (j_type, patient) in min_start_jtype_patient:
+                model += \
+                    job_start_time[job] >= min_start_jtype_patient[j_type, patient] * \
+                                           (job_type[job, j_type] + job_patient[job, patient] - 1)
 
-        model += \
-            job_start_time[job] <= pulp.lpSum(
-                [max_start_jtype_patient[j_type, patient] * job_type[job, j_type]
-                 for j_type in job_types if (job, j_type) in av_job_type if
-                 (j_type, patient) in max_start_jtype_patient]
-            ) + (1 - job_patient[job, patient]) * ub['max_job_start']
+            if (job, j_type) in av_job_type and (j_type, patient) in max_start_jtype_patient:
+                model += \
+                    job_start_time[job] <= max_start_jtype_patient[j_type, patient] + \
+                                           (2 - job_patient[job, patient] - job_type[job, j_type]) * \
+                                           ub['max_job_start']
 
     # TODO: this is an absurdly complicated constraint.
     # if a combo (j_type, patient) is not possible: the job cannot have both assigned.
@@ -322,8 +318,8 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     # return model
     # SOLVING
     # pulp.gurobi_path = r'C:\Users\Franco\AppData\Local\AIMMS\IFA\Aimms\4.30.5.814-x64\Solvers'
-    # model.solve(pulp.PULP_CBC_CMD(maxSeconds=max_seconds, msg=True, fracGap=0, cuts=True, presolve=True))
-    model.solve(pulp.GUROBI_CMD(options=[max_seconds, 0.1], keepFiles=1))
+    model.solve(pulp.PULP_CBC_CMD(maxSeconds=max_seconds, msg=True, fracGap=0, cuts=True, presolve=True))
+    # model.solve(pulp.GUROBI_CMD(options=[max_seconds, 0.1], keepFiles=1))
     # pulp.GUROBI_CMD.
     # FORMAT SOLUTION
     _jobs_used = [job for job in jobs if job_used[job].value()]
