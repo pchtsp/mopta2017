@@ -18,6 +18,8 @@ The model is essentially an assignment problem where each patient gets assigned 
 
 In order to constraint variables and constraints, several sets of tuples have been declared. These sets include combinations of jobs, job types, patients, centers and routes. As explained in chapter \ref{def}, not all combinations were taken into account.
 
+By choosing the correct balance of combinations for these sets, the problem was reduced into a small enough size to be able to solve in a decent amount of time while at the same time not decreasing its quality greatly.
+
 \begin{tabular}{p{15mm}lp{105mm}}
     $\mathcal{L}$    & : & all production lines \\
     $\mathcal{T}$    & : & all job types \\                    
@@ -27,23 +29,26 @@ In order to constraint variables and constraints, several sets of tuples have be
     $\mathcal{R}$    & : & all routes \\    
     $\mathcal{P}$    & : & all patients \\
 		$\mathcal{JL}_{l}$    & : & all jobs of line $l \in \mathcal{L}$ \\
+		$\mathcal{VR}_{v}$    & : & all routes of vehicle $v \in \mathcal{V}$ \\
 		$\mathcal{JP}_{p}$    & : & all jobs available for patient $p$ \\
 		$\mathcal{RP}_p$    & : & all routes available for patient $p$ \\
 		$\mathcal{RJP}_p$    & : & all ($r \in \mathcal{R}$, $j \in \mathcal{J}$) available for patient $p \in \mathcal{P}$ \\
 		$\mathcal{PJ}_j$    & : & all $p \in \mathcal{P}$ reachable by job $j \in \mathcal{J}$ \\
 		$\mathcal{C}_p$    & : & the center $c \in \mathcal{C}$ for patient $p \in \mathcal{P}$ \\
-		$\mathcal{RP}$    & : & all posible ($r \in \mathcal{R}$, $p \in \mathcal{P}$) combinations \\
-		$\mathcal{JP}$    & : & all posible ($j \in \mathcal{J}$, $p \in \mathcal{P}$) combinations \\
-		$\mathcal{RJ}$    & : & all posible ($r \in \mathcal{R}$, $j \in \mathcal{J}$) combinations \\
-		$\mathcal{RJP}$    & : & all posible ($r \in \mathcal{R},j \in \mathcal{J},p \in \mathcal{P}$) combinations \\
-		$\mathcal{TJP}$    & : & all posible ($t \in \mathcal{T},j \in \mathcal{J},p \in \mathcal{P}$) combinations \\
-		$\mathcal{RCC}$    & : & all posible ($r \in \mathcal{R}, c \in \mathcal{C}, c \in \mathcal{C}$) combinations \\
+		$\mathcal{RP}$    & : & all possible ($r \in \mathcal{R}$, $p \in \mathcal{P}$) combinations \\
+		$\mathcal{JP}$    & : & all possible ($j \in \mathcal{J}$, $p \in \mathcal{P}$) combinations \\
+		$\mathcal{RJ}$    & : & all possible ($r \in \mathcal{R}$, $j \in \mathcal{J}$) combinations \\
+		$\mathcal{RJP}$    & : & all possible ($r \in \mathcal{R},j \in \mathcal{J},p \in \mathcal{P}$) combinations \\
+		$\mathcal{TJP}$    & : & all possible ($t \in \mathcal{T},j \in \mathcal{J},p \in \mathcal{P}$) combinations \\
+		$\mathcal{RCC}$    & : & all possible ($r \in \mathcal{R}, c \in \mathcal{C}, c \in \mathcal{C}$) combinations \\
+		$\mathcal{JJ}$    & : & all possible ($j1 \in \mathcal{J}, j2 \in \mathcal{J}$) combinations such that $j2$ comes inmediately after $j1$ and both share the same line \\
+		$\mathcal{RR}$    & : & all possible ($r1 \in \mathcal{R}, r2 \in \mathcal{R}$) combinations such that $r2$ comes inmediately after $r1$ and both share the same vehicle \\
 \end{tabular}
 \bigskip
 
 \subsection{Parameters}
 
-The parameters $MIN\_START_{t,p}$ and $MAX\_START_{t,p}$ are derived from the radioactive information of the job types, the production times of the job types and the start and end times for patients' sessions.
+The parameters $MIN\_START_{tp}$ and $MAX\_START_{tp}$ are derived from the radioactive information of the job types, the production times of the job types and the start and end times for patients' sessions.
 
 The rest of the parameters are input parameters read from the input files.
 
@@ -52,8 +57,8 @@ $PROD_t$ 								& : &		production of job type $t$ \\
 $PROD\_TIME_t$ 					& : &	production time for job type $t$ \\
 $TRAVEL\_TIME_{cc'}$ 		& : &	travel time to go from center $c$ to center $c'$ \\
 $MAX\_TIME$ 						& : & maximum time for starting any job \\
-$MIN\_START_{t,p}$ 			& : & minimum start time for job type $t$ to serve patient $p$ \\
-$MAX\_START_{t,p}$ 			& : & maximum start time for job type $t$ to serve patient $p$ \\
+$MIN\_START_{tp}$ 			& : & minimum start time for job type $t$ to serve patient $p$ \\
+$MAX\_START_{tp}$ 			& : & maximum start time for job type $t$ to serve patient $p$ \\
 $DEMAND_p$ 							& : & number of doses for patient $p$ \\
 $SESSION\_START_p$ 			& : & start of session for patient $p$ \\
 $C\_PROD\_FIXED$				& : & fixed cost for having a line open \\
@@ -63,8 +68,12 @@ $C\_FIXED$							& : & fixed cost for using each vehicle at least once\\
 \end{tabular}
 \bigskip
 
-
 \section{Decision variables}
+
+Decision variables are clasified according to its nature: production, transport and demand.
+The main decision variable is the one relating all three: jobs, patients and routes: $routeJobPatient_{rjp}$.
+
+Most variables are assignment (binary) variables that relate different sides of the production and transportation decisions.
 
 \subsection{Production variables}
 
@@ -105,124 +114,124 @@ $C\_FIXED$							& : & fixed cost for using each vehicle at least once\\
 
 \subsection{Objective function}
 
-\begin{align*}
-\mbox{MIN} \quad &
-	\label{eq:fo}\\
+The objective function includes the minimization of the production and transport costs. Each one had both fixed cost of using a resource (a line, a vehicle) and a variable cost depending on the amount of time or distance it was used.
+
+In this case, $TRAVEL\_COST$ already includes the sum of the distance and time costs of an arc.
+
+\begin{align}
+\mbox{MIN} \quad &\notag\\
 & \sum_{l \in \mathcal{L}} lineUsed_l \times C\_PROD\_FIXED + \notag\\
 & \sum_{(j, t) \in \mathcal{JT}} C\_PROD\_VAR \times jobType_{jt} \times PROD\_TIME_t + \notag\\
-& \sum_{(r, c, c') \in \mathcal{RCC}} routeArc{rcc'} \times TRAVEL\_COST_{cc'} + \notag\\
-& \sum_{v \in \mathcal{V}} vehicleUsed_v \times C\_FIXED
-\end{align*}
-
-
+& \sum_{(r, c, c') \in \mathcal{RCC}} routeArc_{rcc'} \times TRAVEL\_COST_{cc'} + \notag\\
+& \sum_{v \in \mathcal{V}} vehicleUsed_v \times C\_FIXED 	\label{eq:of}
+\end{align}
 
 \subsection{Production}
 
+\ref{eq:jobOrder} and \ref{eq:starttime} break symmetry by forcing jobs to have a sequence based on the numbers and also to try to use the jobs at the beginning of the sequence first. The idea is that two consecutive jobs cannot overlap.
+
+\ref{eq:jobtime} and \ref{eq:jobproduction} define auxiliary variables to have the production and time for a given job based on the assigned job type. This is useful for other constraints.
+
+\ref{eq:lineJob} relates the using of each line with using at least one job in that line.
+
+\ref{eq:jobType} just forces every job to have a job type if it is being used.
+
 \begin{align}
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Starting times
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		& jobST_{j} \geq jobST_{j-1} + jobTime_{j} 
-				\hspace{10mm} j \in \mathcal{J}\\
-		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& jobST_{j2} \geq jobST_{j1} + jobTime_{j1} 
+				\hspace{10mm} (j1, j2) \in \mathcal{JJ} \label{eq:starttime}\\
 		% job used if previous is used
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
-		& jobUsed_{j-1} \geq jobUsed_{j} 
-				\hspace{10mm}  j \in \mathcal{J}\\
-		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& jobUsed_{j2} \geq jobUsed_{j1} 
+				\hspace{10mm} (j1, j2) \in \mathcal{JJ} \label{eq:jobOrder}\\
 		% Lines is used if job is used:
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
-		& lineUsed_{l} \geq jobUsed_{j}, j \in \mathcal{JL_l} 
-				\hspace{10mm}  l \in \mathcal{L} \\
-		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+		& lineUsed_{l} \geq jobUsed_{j}
+				\hspace{10mm} j \in \mathcal{JL}_l, l \in \mathcal{L} \label{eq:lineJob}\\
 		% if a job is used, it has only one type
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
 		& \sum_{t \in \mathcal{T}} jobType_{jt} = jobUsed_{j} 
-				\hspace{10mm} j \in \mathcal{J}\\
-		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+				\hspace{10mm} j \in \mathcal{J} \label{eq:jobType}\\
 		% if a job is used, it has a production equal to its type
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
 		& jobProd_{j} = \sum_{t \in \mathcal{T}} jobType_{jt} \times PROD_{t}
-				\hspace{10mm} j \in \mathcal{J}\\
-		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
+				\hspace{10mm} j \in \mathcal{J} \label{eq:jobproduction}\\
 		%% if a job is used, it has times equal to its type
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%		
 		& jobTime_{j} = \sum_{t \in \mathcal{T}}jobType_{jt} \times PROD\_TIME{t}
-				\hspace{10mm} j \in \mathcal{J}\\
+				\hspace{10mm} j \in \mathcal{J} \label{eq:jobtime}\\
 \end{align}
 
 \subsection{Transport}
 
+This part has many simmilarities to a normal VRP formulation. 
+
+\ref{eq:balance}, \ref{eq:balance2} and \ref{eq:cyclecutting} are the typical TSP / VRP constraints where every node has one exit arc, one entering arc and each node increases the arrival time.
+
+\ref{eq:routeET} is just the definition of the ending time for the route.
+
+\ref{eq:routefirstnode} and \ref{eq:consecutiveRoutes} constrain the starting time to it is bigger than the ending time of the previous route and is equal to the arrival time for the first node.
+
+\ref{eq:vehicleUsed} just marks the vehicle as used if at least one of its routes is being used.
+
 \begin{align}
-%$routeUsed_{r}$    	
-%$vehicleUsed_{v}$   
-%$routeArrival_{rc}$ 
-%$routeST_{r}$    		
-%$routeArc_{rcc'}$   
-%$routeET_{r}$   			
 		& routeET_{r} \ge routeArrival_{rc} + TRAVEL\_TIME{c0}
-				\hspace{10mm} r, c \in \mathcal{RC}\\
-		& vehicleUsed_{VEHICLE(r)} \ge vehicleUsed_{r}
-				\hspace{10mm} r \in \mathcal{R}\\
-		& routeST_{r} \ge routeST_{r-1}
-				\hspace{10mm} r \in \mathcal{R}\\
+				\hspace{10mm} (r, c) \in \mathcal{RC}\label{eq:routeET}\\
+		& vehicleUsed_{v} \ge vehicleUsed_{r}
+				\hspace{10mm} v \in \mathcal{V}, r \in \mathcal{VR}_{v} \label{eq:vehicleUsed}\\
+		& routeST_{r2} \ge routeET_{r1}
+				\hspace{10mm} (r1, r2) \in \mathcal{RR} \label{eq:consecutiveRoutes}\\
 		& routeST_{r} = routeArrival_{r0}
-				\hspace{10mm} r \in \mathcal{R}\\
-		% TODO: include domain with neighbors:
+				\hspace{10mm} r \in \mathcal{R}\label{eq:routefirstnode}\\
 		& routeArrival_{rc'} \ge TRAVEL\_TIME{cc'} + routeArrival_{rc} - \notag\\ 
 		& \hspace{10mm} MAX\_TIME \times (1 - routeArc_{rcc'})
-				\hspace{10mm} r \in \mathcal{R}, c, c' \in \mathcal{C} \\
+				\hspace{10mm} (r, c, c') \in \mathcal{RCC} \label{eq:cyclecutting}\\
 		& \sum_{c' \in \mathcal{C}} routeArc_{rcc'}  = routeUsed_{r}
-				\hspace{10mm} r, c \in \mathcal{RC} \\
+				\hspace{10mm} r, c \in \mathcal{RC} \label{eq:balance}\\
 		& \sum_{c' \in \mathcal{C}} routeArc_{rc'c}  = routeUsed_{r}
-				\hspace{10mm} r, c \in \mathcal{RC} \\				
+				\hspace{10mm} r, c \in \mathcal{RC} \label{eq:balance2}\\				
 \end{align}
 
 \subsection{Demand}
 
-\begin{align}
-%$routeJobPatient_{rjp}$
-%$routeJob_{rj}$    			
-%$jobPatient_{jp}$    		
-%$routePatient_{rp}$    
-%$lineUsed_{l}$  
-%$jobUsed_{j}$   
-%$jobType_{jt}$  
-%$jobST_{j}$    	
-%$jobProd_{j}$   
-%$jobTime_{j}$               
+The following set of constraints really attempt to tie transport, production and demand into a comprehensive behavior.
+They include constraints that force the radioactive content to fall inside the correct bounds (\ref{eq:radio1} and \ref{eq:radio2}).
+
+They also include some auxiliary assignments constraints to tie the auxiliary binary variables: \ref{eq:auxBinary1}, \ref{eq:auxBinary2}, \ref{eq:auxBinary3}, \ref{eq:auxBinary4}, \ref{eq:auxBinary5} and \ref{eq:auxBinary6}. These binary variables tie jobs, routes and patients so each patient has one route assigned and one job assigned.
+
+For transportation, demand tied to a specific job cannot exceed its capacity: (\ref{eq:prodcapacity}) and a route assigned to a job needs to start after the job ends (\ref{eq:routejob}).
+
+A route that serves a specific patient needs to comply with \ref{eq:routepatient1}, \ref{eq:routepatient2} and finally \ref{eq:routepatient3}. These constraint force that the route arrives before the patient needs the dosage, that the route is being used and that the route is passing through the patient's center.
+
+\begin{align}           
 		% RADIOACTIVITY:
-		& jobST_{j} \ge MIN\_START_{t,p} \times (jobType_{jt} + jobPatient_{jp} -1) \notag\\ 
-				&	\hspace{10mm} (t, j, p) \in \mathcal{TJP} \\
-		& jobST_{j} \le MAX\_START_{t,p} + (2 - jobType_{jt} + jobPatient_{jp}) \times MAX\_TIME \notag\\ 
-				& \hspace{10mm} (t, j, p) \in \mathcal{TJP} \\
+		& jobST_{j} \ge MIN\_START_{tp} \times (jobType_{jt} + jobPatient_{jp} -1) \notag\\ 
+				&	\hspace{10mm} (t, j, p) \in \mathcal{TJP} \label{eq:radio1}\\
+		& jobST_{j} \le MAX\_START_{tp} + (2 - jobType_{jt} + jobPatient_{jp}) \times MAX\_TIME \notag\\ 
+				& \hspace{10mm} (t, j, p) \in \mathcal{TJP} \label{eq:radio2}\\
+		%TODO: the other radioactivity constraint.
 		% ASSIGNMENTS:
-		& \sum_{j \in \mathcal{JP_p}} jobPatient_{jp} = 1
-				\hspace{10mm} p \in \mathcal{P} \\
-		& \sum_{r \in \mathcal{RP_p}} routePatient_{rp} = 1
-				\hspace{10mm} p \in \mathcal{P} \\
+		& \sum_{j \in \mathcal{JP}_p} jobPatient_{jp} = 1
+				\hspace{10mm} p \in \mathcal{P} \label{eq:auxBinary1}\\
+		& \sum_{r \in \mathcal{RP}_p} routePatient_{rp} = 1
+				\hspace{10mm} p \in \mathcal{P} \label{eq:auxBinary2}\\
 		& \sum_{(r, j) \in \mathcal{RJP}_p} routeJobPatient_{rjp} = 1
-				\hspace{10mm} p \in \mathcal{P} \\
+				\hspace{10mm} p \in \mathcal{P} \label{eq:auxBinary3}\\
 		%# sum of doses for a single job cannot exceed the production of the job
-		& \sum_{p \in \mathcal{PJ_j}} jobPatient_{jp} \times DEMAND_{p} \le jobProd_{j}
-				\hspace{10mm} j \in \mathcal{J} \\
+		& \sum_{p \in \mathcal{PJ}_j} jobPatient_{jp} \times DEMAND_{p} \le jobProd_{j}
+				\hspace{10mm} j \in \mathcal{J} \label{eq:prodcapacity}\\
 		%# route needs to arrive to center before patient needs dosage
 		& routeArrival_{rc} \le SESSION\_START_{p} + MAX\_TIME \times (1 - routePatient_{rp}) \notag\\ 
-				&	\hspace{10mm} (r, p) \in \mathcal{RP}, c = \mathcal{C}_p\\
+				&	\hspace{10mm} (r, p) \in \mathcal{RP}, c = \mathcal{C}_p \label{eq:routepatient1}\\
 		%# if route is not used, it cannot take passengers
 		& routePatient_{rp} \le routeUsed_{r}
-				\hspace{10mm} (r, p) \in \mathcal{RP} \\
+				\hspace{10mm} (r, p) \in \mathcal{RP} \label{eq:routepatient2}\\
     %# if a route reaches a patient, it needs to pass through the center
 		& routePatient_{rp} \le \sum_{c' \in \mathcal{C}} routeArc_{rcc'}
-				\hspace{10mm} (r, p) \in \mathcal{RP} \\
+				\hspace{10mm} (r, p) \in \mathcal{RP} \label{eq:routepatient3}\\
     %# route needs to start after job finishes, if assigned.
 		& routeST_{r} \ge jobST_{j} + jobTime_{j} - (1 - routeJob_{rj}) \times MAX\_TIME \notag\\ 
-				&	\hspace{10mm} (r, j) \in \mathcal{RJ} \\
+				&	\hspace{10mm} (r, j) \in \mathcal{RJ} \label{eq:routejob}\\
 	%# all three need to be assigned in order for the main variable to make sense
 		& routeJobPatient_{rjp} \le routeJob_{rj}	
-				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \\
+				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \label{eq:auxBinary4}\\
 		& routeJobPatient_{rjp} \le jobPatient_{jp}
-				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \\
+				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \label{eq:auxBinary5}\\
 		& routeJobPatient_{rjp} \le routePatient_{rp}
-				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \\
+				\hspace{10mm} (r, j, p) \in \mathcal{RJP} \label{eq:auxBinary6}
 \end{align}
