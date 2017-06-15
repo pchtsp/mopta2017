@@ -315,12 +315,10 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     if cutoff_min is not None:
         model += objective >= cutoff_min
     model += objective
-    # return model
     # SOLVING
-    # pulp.gurobi_path = r'C:\Users\Franco\AppData\Local\AIMMS\IFA\Aimms\4.30.5.814-x64\Solvers'
     model.solve(pulp.PULP_CBC_CMD(maxSeconds=max_seconds, msg=True, fracGap=0, cuts=True, presolve=True))
     # model.solve(pulp.GUROBI_CMD(options=[max_seconds, 0.1], keepFiles=1))
-    # pulp.GUROBI_CMD.
+
     # FORMAT SOLUTION
     _jobs_used = [job for job in jobs if job_used[job].value()]
     _job_start_time = {job: job_start_time[job].value() for job in _jobs_used}
