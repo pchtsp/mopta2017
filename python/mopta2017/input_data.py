@@ -1,10 +1,5 @@
 import os
 import re
-from collections import namedtuple
-
-travel = namedtuple("Travel", ['times', 'dist'])
-line = namedtuple("Line", ['time', 'dosages', 'radio'])
-patient = namedtuple("Patient", ['min', 'max', 'num'])
 
 
 def get_data_clean(data_directory):
@@ -29,12 +24,12 @@ def get_data_clean(data_directory):
     # it doesn't make sense to have unloading times in the production node.
     # also: the dosage needs to arrive 30 minutes before the patient,
     #   so we'll be adding 30 minutes to the transport time.
-    # TODO: move the 30 minute to the constraint.
+    # TODO: move the 30 minute to the constraint. or the unloading
     unloading_times = format_waiting_params(file_data['S_j'])
     unloading_times[0] = 0
     for (i, j) in params['travel']:
-        new_time = params['travel'][(i, j)].times + unloading_times[j] + 30
-        params['travel'][(i, j)] = travel(new_time, params['travel'][(i, j)].dist)
+        new_time = params['travel'][(i, j)]['times'] + unloading_times[j] + 30
+        params['travel'][(i, j)]['times'] = new_time
 
     return params
 
@@ -73,14 +68,18 @@ def get_main_data(data_directory):
 
 def format_production_params(production_params):
     dict_out = {}
-    production_params.pop(0) #  the first line is the header
+    production_params.pop(0)  # the first line is the header
     for i, row in enumerate(production_params):
         col1 = re.search('^\d+', (row[0]))
         if col1 is not None:
             # this avoids getting the first row or getting an runtime error
             # because of the regex syntax going wrong.
-            col1 = float(col1.group())
-            dict_out[i] = line(col1, float(row[1]), float(row[2]))
+            col1 = col1.group()
+            dict_out[i] = \
+                {'time': float(col1),
+                 'dosages': float(row[1]),
+                 'radio': float(row[2])
+                 }
     return dict_out
 
 
@@ -119,8 +118,9 @@ def format_travel_times_distances(times, distances):
     # I put both values in the same tuple.
     # I also make the matrix symmetric
     for _tuple in dict_out_times.keys():
-        dict_out[_tuple] = travel(dict_out_times[_tuple], dict_out_dist[_tuple])
-        dict_out[(_tuple[1], _tuple[0])] = travel(dict_out_times[_tuple], dict_out_dist[_tuple])
+        temp_dict = {'times': dict_out_times[_tuple], 'dist': dict_out_dist[_tuple]}
+        dict_out[_tuple] = temp_dict
+        dict_out[(_tuple[1], _tuple[0])] = temp_dict
 
     return dict_out
 
@@ -132,8 +132,8 @@ def format_travel_costs(data_travel, costs_travel):
     :return: costs per arc
     """
 
-    costs = {arc: data_travel[arc].times * costs_travel['minute'] +
-                 data_travel[arc].dist * costs_travel['kilometer']
+    costs = {arc: data_travel[arc]['times'] * costs_travel['minute'] +
+                 data_travel[arc]['dist'] * costs_travel['kilometer']
                         for arc in data_travel}
 
     costs[0, 0] = 0
@@ -156,7 +156,7 @@ def format_appointments_time(times):
                 time = 0
             else:
                 time = float(hour)*60 + float(minute)
-            dict_out[(int(center), j)] = patient(time, time, 1)
+            dict_out[(int(center), j)] = {'min': time, 'max': time, 'num': 1}
 
     return dict_out
 

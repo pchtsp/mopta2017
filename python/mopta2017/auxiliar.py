@@ -1,5 +1,4 @@
 import math
-from collections import namedtuple
 import os
 import datetime
 import pickle
@@ -12,10 +11,12 @@ def load_solution(path):
         return pickle.load(f)
 
 
-def export_solution(path, obj):
+def export_solution(path, obj, name=None):
     if not os.path.exists(path):
         return False
-    path = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d%H%M") + ".pickle")
+    if name is None:
+        name = datetime.datetime.now().strftime("%Y%m%d%H%M")
+    path = os.path.join(path, name + ".pickle")
     with open(path, 'wb') as f:
         pickle.dump(obj, f)
     return True
@@ -88,13 +89,13 @@ def limit_start_jtype_patient(data_in, min_start=False):
 
     string_q = "max"
     # we decide the reference time, based on the bound:
-    patient_time = {patient: data_in['demand'][patient].min for patient in patients}
+    patient_time = {patient: data_in['demand'][patient]['min'] for patient in patients}
     if min_start:
         string_q = "min"
-        patient_time = {patient: data_in['demand'][patient].max for patient in patients}
+        patient_time = {patient: data_in['demand'][patient]['max'] for patient in patients}
 
     jtype_time = {j_type: get_time_from_radio(
-        data_in['production'][j_type].radio,
+        data_in['production'][j_type]['radio'],
         data_in['radio'][string_q],
         data_in['radio']['decay']) for j_type in job_types}
 
@@ -103,7 +104,7 @@ def limit_start_jtype_patient(data_in, min_start=False):
     start_jtype_patient = {(j_type, patient):
                                math.floor((patient_time[patient] -
                                            jtype_time[j_type] -
-                                           data_in['production'][j_type].time
+                                           data_in['production'][j_type]['time']
                                            ) / 30) * 30
                            for j_type in job_types for patient in patients
                            }
@@ -111,7 +112,7 @@ def limit_start_jtype_patient(data_in, min_start=False):
         start_jtype_patient = {(j_type, patient):
                                    math.ceil((patient_time[patient] -
                                              jtype_time[j_type] -
-                                              data_in['production'][j_type].time
+                                              data_in['production'][j_type]['time']
                                               ) / 30) * 30
                                for j_type in job_types for patient in patients
                                }
@@ -125,13 +126,12 @@ def group_patients(data_in, period_size=30):
     :param period_size: minutes of grouped data.
     :return: data_in but with passengers grouped
     """
-    patient = namedtuple("Patient", ['min', 'max', 'num'])
     demand = data_in['demand']
     centers = list(set([tup[0] for tup in data_in['demand']]))
     new_demand = {}
     for c in centers:
         patients_in_center = [patient for patient in demand if patient[0] == c]
-        center_times = [demand[patient].max for patient in patients_in_center]
+        center_times = [demand[patient]['max'] for patient in patients_in_center]
         max_time = int(max(center_times)) + period_size*2
         num_periods = int(math.ceil(max_time / period_size))
         # print(max_time)
@@ -141,14 +141,14 @@ def group_patients(data_in, period_size=30):
             period_start = period_size*previous_period
             period_end = period_size*period
             patients_in_period = [patient for patient in patients_in_center
-                                  if period_end > demand[patient].min >= period_start]
+                                  if period_end > demand[patient]['min'] >= period_start]
             num_patients = len(patients_in_period)
             if num_patients == 0:
                 continue
-            patients_times = [demand[patient].min for patient in patients_in_period]
+            patients_times = [demand[patient]['min'] for patient in patients_in_period]
             new_min = min(patients_times)
             new_max = max(patients_times)
-            new_demand[c, patient_count] = patient(new_min, new_max, num_patients)
+            new_demand[c, patient_count] = {'min': new_min, 'max': new_max, 'num': num_patients}
             previous_period = period
             patient_count += 1
 

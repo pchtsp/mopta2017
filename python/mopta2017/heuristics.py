@@ -21,7 +21,7 @@ def initial_solution(data_in):
     line_type = {line: line for line in lines}
     job_types_available = data_in['production']
 
-    line_durations = {l: job_types_available[line_type[l]].time for l in lines}
+    line_durations = {l: job_types_available[line_type[l]]['time'] for l in lines}
     max_jobs = {l: int(horizon_size / line_durations[line_type[l]]) for l in lines}
 
     # now we start creating the "job" variables.
@@ -42,8 +42,8 @@ def initial_solution(data_in):
             job_end_times[line, job] = job_end_times_list[line][job]
 
     job_type = {job: line_type[job[0]] for job in job_start_time}
-    job_production = {job: job_types_available[job_type[job]].dosages for job in job_start_time}
-    job_initial_radio = {job: job_types_available[job_type[job]].radio for job in job_start_time}
+    job_production = {job: job_types_available[job_type[job]]['dosages'] for job in job_start_time}
+    job_initial_radio = {job: job_types_available[job_type[job]]['radio'] for job in job_start_time}
 
     #  ##################
     #  ##TRANSPORT#######
@@ -53,8 +53,8 @@ def initial_solution(data_in):
     # here, we will take as much as vehicles as necessary (which is not okay...)
     vehicles = range(max(data_in['sets']['vehicles'], len(data_in['clients'])-1))
     arcs = data_in['travel'].keys()
-    times_prod_to_center = {center: data_in['travel'][node1, center].times for node1, center in arcs if node1 == 0}
-    times_center_to_prod = {center: data_in['travel'][center, node1].times for node1, center in arcs if node1 == 0}
+    times_prod_to_center = {center: data_in['travel'][node1, center]['times'] for node1, center in arcs if node1 == 0}
+    times_center_to_prod = {center: data_in['travel'][center, node1]['times'] for node1, center in arcs if node1 == 0}
     vehicle_to_center = {veh: veh+1 for veh in vehicles}
     duration_trip = {veh: times_prod_to_center[vehicle_to_center[veh]] + times_center_to_prod[vehicle_to_center[veh]]
                      for veh in vehicles}
@@ -104,7 +104,7 @@ def initial_solution(data_in):
         for route in veh_routes_per_center[center]:
             arrive_time = route_arrival[route, center]
             for pos in range(center_num_groups[center]):
-                if arrive_time <= center_demand[(center, pos)].min:
+                if arrive_time <= center_demand[(center, pos)]['min']:
                     route_patient[(route, (center, pos))] = 1
     route_patient = clean_dictionary(route_patient)
     # TODO: routes for the last hospital
@@ -142,8 +142,8 @@ def initial_solution(data_in):
     for job in jobs_ordered:
         for route, patient in route_patient:
             # we do some math to check the radioactive decay
-            time_first_patient = center_demand[patient].min - job_end_times[job]
-            time_last_patient = center_demand[patient].max - job_end_times[job]
+            time_first_patient = center_demand[patient]['min'] - job_end_times[job]
+            time_last_patient = center_demand[patient]['max'] - job_end_times[job]
 
             radio_first_patient = get_radioactivity(job_initial_radio[job], time_first_patient, ratio_radio)
             radio_last_patient = get_radioactivity(job_initial_radio[job], time_last_patient, ratio_radio)
@@ -156,7 +156,7 @@ def initial_solution(data_in):
                 continue
 
             # if this is a good candidate, then assign jobs, routes and patients:
-            job_remain_production[job] -= center_demand[patient].num
+            job_remain_production[job] -= center_demand[patient]['num']
             patient_satisfied[patient] = 1
             route_job_patient[route, job, patient] = 1
 

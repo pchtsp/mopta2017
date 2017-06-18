@@ -20,9 +20,9 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     # maximum parameters:
     ub = {
         'time': 24*60,  # one day
-        'dosages': max(data_in['production'][j_type].dosages for j_type in job_types),
-        'radio': max(data_in['production'][j_type].radio for j_type in job_types),
-        'prod_time': max(data_in['production'][j_type].time for j_type in job_types)
+        'dosages': max(data_in['production'][j_type]['dosages'] for j_type in job_types),
+        'radio': max(data_in['production'][j_type]['radio'] for j_type in job_types),
+        'prod_time': max(data_in['production'][j_type]['time'] for j_type in job_types)
     }
 
     # auxiliary sets
@@ -42,7 +42,7 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     routes = [(veh, route_num) for veh in vehicles for route_num in range(num_routes_per_veh)]
     routenum_per_veh = {veh: sorted(route[1] for route in routes if route[0] == veh) for veh in vehicles}
 
-    arc_dist = {arc: travel.dist for arc, travel in data_in['travel'].items()}
+    arc_dist = {arc: travel['dist'] for arc, travel in data_in['travel'].items()}
     for center in centers:
         arc_dist[center, center] = 0
     arc_dist_array = np.array([[arc_dist[center, center2]
@@ -111,10 +111,10 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     min_start_jtype_patient = limit_start_jtype_patient(data_in, min_start=True)
 
     ub['max_job_start'] = max(max_start_jtype_patient.values())
-    ub['max_job_end'] = ub['max_job_start'] + max([l.time for l in data_in['production'].values()])
-    ub['max_patient_visit'] = max([p.max for p in data_in['demand'].values()])
-    ub['max_route_arrival'] = max([p.max for p in data_in['demand'].values()])
-    ub['max_route_time'] = max([p.times for p in data_in['travel'].values()])
+    ub['max_job_end'] = ub['max_job_start'] + max([l['time'] for l in data_in['production'].values()])
+    ub['max_patient_visit'] = max([p['max'] for p in data_in['demand'].values()])
+    ub['max_route_arrival'] = max([p['max'] for p in data_in['demand'].values()])
+    ub['max_route_time'] = max([p['times'] for p in data_in['travel'].values()])
     ub['max_route_end'] = ub['max_route_arrival'] + ub['max_route_time']
     # MODEL
 
@@ -149,7 +149,7 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     objective = pulp.LpVariable("objective", lowBound=0)
 
     # CONSTRAINT
-    arc_time = {arc: travel.times for arc, travel in data_in['travel'].items()}
+    arc_time = {arc: travel['times'] for arc, travel in data_in['travel'].items()}
     arc_time[0, 0] = 0
 
     # Production
@@ -180,12 +180,12 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     # it has radioactivity equal to its type
     # it has times equal to its type
     for job in jobs:
-        model += job_production[job] <= pulp.lpSum(job_type[job, j_type] * production[j_type].dosages
+        model += job_production[job] <= pulp.lpSum(job_type[job, j_type] * production[j_type]['dosages']
                                                    for j_type in job_types if (job, j_type) in av_job_type),\
                  "job_production_{}".format(job)
         for j_type in job_types:
             if (job, j_type) in av_job_type:
-                model += job_time[job] >= job_type[job, j_type] * production[j_type].time,\
+                model += job_time[job] >= job_type[job, j_type] * production[j_type]['time'],\
                  "job_time_{}{}".format(job, j_type)
 
     # Transport
@@ -268,14 +268,14 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
 
     # sum of doses for a single job cannot exceed the production of the job
     for job in jobs:
-        model += pulp.lpSum(job_patient[job, patient] * data_in['demand'][patient].num
+        model += pulp.lpSum(job_patient[job, patient] * data_in['demand'][patient]['num']
                             for patient in patients if (job, patient) in av_job_patient) <= job_production[job],\
         "Limit_patients_job_{}".format(job)
 
     # route needs to arrive to center before patient needs dosage
     for (route, patient) in av_route_patient:
         model += \
-            route_arrival[route, patient[0]] <= data_in['demand'][patient].min +\
+            route_arrival[route, patient[0]] <= data_in['demand'][patient]['min'] +\
                                                 (1 - route_patient[route, patient]) * ub['max_patient_visit']
 
     # if route is not used, it cannot take passengers
@@ -305,7 +305,7 @@ def mip_model_complete(data_in, max_seconds=5000, cutoff_min=None, cutoff_max=No
     cost_prod_var = costs['production']['variable']
 
     model += objective == pulp.lpSum([line_used[line] * cost_prod_fixed for line in lines] +
-                        [job_type[job, j_type] * data_in['production'][j_type].time * cost_prod_var
+                        [job_type[job, j_type] * data_in['production'][j_type]['time'] * cost_prod_var
                          for job, j_type in av_job_type] +
                         [route_arc[r, c1, c2] * data_in['travel_costs'][c1, c2] for r, c1, c2 in av_route_centers] +
                         [vehicle_used[veh] * costs['route']['fixed'] for veh in vehicles]

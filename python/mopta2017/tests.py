@@ -13,17 +13,17 @@ def patients_not_covered(solution, data_in):
 def patients_radioactive(solution, data_in):
     # we check if patients receive the correct radioactive level
     # we need to calculate the jobs_end based on the duration of the job
-    time_to_first_patient = {(job, patient): data_in['demand'][patient].min -
+    time_to_first_patient = {(job, patient): data_in['demand'][patient]['min'] -
                                              solution['jobs_start'][job] -
-                                             data_in['production'][solution['jobs_type'][job]].time
+                                             data_in['production'][solution['jobs_type'][job]]['time']
                              for (_, job, patient) in solution['route_job_patient']}
 
-    time_to_last_patient = {(job, patient): data_in['demand'][patient].max -
+    time_to_last_patient = {(job, patient): data_in['demand'][patient]['max'] -
                                             solution['jobs_start'][job] -
-                                            data_in['production'][solution['jobs_type'][job]].time
+                                            data_in['production'][solution['jobs_type'][job]]['time']
                             for (_, job, patient) in solution['route_job_patient']}
 
-    initial_radio_in_job = {job: data_in['production'][job_type].radio
+    initial_radio_in_job = {job: data_in['production'][job_type]['radio']
                                   for job, job_type in solution['jobs_type'].items()}
 
     radioactive_in_first_patient = \
@@ -52,7 +52,7 @@ def get_job_capacity(solution, data_in, all_jobs=False):
     for (_, job, p) in solution['route_job_patient']:
         job_demand[job] += data_in['demand'][p].num
     # job_demand = clean_dictionary(job_demand)
-    job_idle_capacity = {job: data_in['production'][solution['jobs_type'][job]].dosages - job_demand[job]
+    job_idle_capacity = {job: data_in['production'][solution['jobs_type'][job]]['dosages'] - job_demand[job]
                          for job in job_demand}
     if not all_jobs:
         job_idle_capacity = {job: cap for job, cap in job_idle_capacity.items() if cap < 0}
@@ -63,7 +63,7 @@ def get_job_capacity(solution, data_in, all_jobs=False):
 def get_overlapping_jobs_in_line(solution, data_in):
     jobs_start = solution['jobs_start']
     jobs = [job for job in solution['jobs_start']]
-    jobs_end = {job: jobs_start[job] + data_in['production'][solution['jobs_type'][job]].time
+    jobs_end = {job: jobs_start[job] + data_in['production'][solution['jobs_type'][job]]['time']
                 for job in jobs}
     lines = list(set([job[0] for job in jobs]))
     jobs_per_line = {line: [job for job in jobs if job[0] == line] for line in lines}
@@ -89,7 +89,7 @@ def get_overlapping_routes_in_veh(solution, data_in):
     route_last_visit_node = {route: route_end_info[route][0][1] for route in routes}
 
     #  if route_last_visit_node[route], the route was not used
-    route_end = {route: route_last_visit_time[route] + data_in['travel'][route_last_visit_node[route], 0].times
+    route_end = {route: route_last_visit_time[route] + data_in['travel'][route_last_visit_node[route], 0]['times']
                  for route in routes if route_last_visit_node[route] != 0}
 
     routes_per_veh = {veh: [route for route in routes if route[0] == veh if route_last_visit_node[route] != 0]
@@ -109,7 +109,7 @@ def get_routes_before_job(solution, data_in):
     route_job = [(tup[0], tup[1]) for tup in solution['route_job_patient']]
     jobs_start = solution['jobs_start']
     jobs = [job for job in solution['jobs_start']]
-    jobs_end = {job: jobs_start[job] + data_in['production'][solution['jobs_type'][job]].time
+    jobs_end = {job: jobs_start[job] + data_in['production'][solution['jobs_type'][job]]['time']
                 for job in jobs}
 
     route_before_job = [(r, j) for (r, j) in route_job if solution['routes_start'][r] < jobs_end[j]]
@@ -126,7 +126,7 @@ def get_costs(solution, data_in):
     vehicle_cost = len(vehicle_used) * costs['route']['fixed']
 
     lines_used = set([tup[0] for tup in solution['jobs_start']])
-    lines_time_used = sum(data_in['production'][solution['jobs_type'][tup]].time for tup in solution['jobs_type'])
+    lines_time_used = sum(data_in['production'][solution['jobs_type'][tup]]['time'] for tup in solution['jobs_type'])
 
     production_fix_cost = len(lines_used) * costs['production']['fixed']
     production_var_cost = lines_time_used * costs['production']['variable']
