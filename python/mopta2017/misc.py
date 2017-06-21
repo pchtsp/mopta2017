@@ -3,7 +3,7 @@ import mopta2017.auxiliar as aux
 import mopta2017.tests as tests
 import re
 import mopta2017.input_data as data_import
-
+import csv
 
 def time_from_name(name):
     result = re.search('_p(\d*)', name)
@@ -15,7 +15,7 @@ data_directory_2 = r'C:\Users\Franco\Documents\Projects\baobab\mopta2017\results
 files_list = [name for name in os.listdir(data_directory) if os.path.splitext(name)[1] == ".pickle"]
 files_names = [os.path.splitext(name)[0] for name in files_list]
 files_paths = {files_names[key]: os.path.join(data_directory, file) for key, file in enumerate(files_list)}
-
+# files_paths = { '201706190051_p60_t40000_scbc_tight': 'C:\\Users\\Franco\\Documents\\Projects\\baobab\\mopta2017\\results\\201706190051_p60_t40000_scbc_tight.pickle'}
 file_data = {}
 for name, path in files_paths.items():
     with open(path, 'r') as f:
@@ -47,8 +47,13 @@ experiment_cost = \
     {name: sum(tests.get_costs(data['result'], data['input']).values()) for name, data in experiment.items()}
 
 experiment['201705020000']['input'].keys()
-
-
+rutas = file_data['201705230608_p60_t25000_sgurobi_tight']['result']['routes_visit']
+file_data['201705230608_p60_t25000_sgurobi_tight']['result']['route_job_patient']
+rutas_tup = [(k[0][0], k[0][1], k[1], v) for k, v in rutas.items()]
+with open('ur file.csv','w') as out:
+    csv_out = csv.writer(out)
+    for row in rutas_tup:
+        csv_out.writerow(row)
 # solution = aux.load_solution(path + "/201705021351_3centros.pickle")
 
 # sol_costs = tests.get_costs(solution, data_in)
